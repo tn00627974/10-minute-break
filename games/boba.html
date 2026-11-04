@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>珍珠接接樂</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+/* Layout: a drink-stand counter — pastel wall with dot wallpaper, pearls rain from above into one plastic cup sliding along the counter */
+:root{
+  --wall:#ffdbe4;
+  --dot:#fff2f5;
+  --counter:#c98b5f;
+  --counter-hi:#e0a77c;
+  --cocoa:#4e3024;
+  --pearl:#2a1a14;
+  --chili:#e2322b;
+  --mint:#5fb79a;
+  --cream:#fffaf2;
+  --muted:#9b6f63;
+  --round:"Baloo 2","Noto Sans TC",system-ui,sans-serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:light;
+}
+html{height:100%;box-sizing:border-box;background:#f7c9d5}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:#f7c9d5;color:var(--cocoa);font-family:var(--body);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.05rem;letter-spacing:.06em;white-space:nowrap}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.05}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-family:var(--round);font-weight:800;font-size:1.3rem;font-variant-numeric:tabular-nums}
+.lives{display:flex;gap:3px;align-items:center;height:1.36rem}
+.lives i{width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#7a5a4e,var(--pearl) 60%)}
+.lives i.lost{background:none;box-shadow:inset 0 0 0 2px rgba(78,48,36,.25)}
+.icon-btn{width:34px;height:34px;border-radius:10px;border:0;background:rgba(255,255,255,.6);color:var(--cocoa);cursor:pointer;font-size:.9rem;display:grid;place-items:center;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:18px;overflow:hidden;touch-action:none;background:var(--wall)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pop{position:absolute;left:0;right:0;top:30%;text-align:center;font:900 1.35rem var(--body);color:var(--cocoa);text-shadow:0 2px 0 #fff;opacity:0;pointer-events:none}
+.pop.show{animation:pop 1.2s ease-out}
+@keyframes pop{0%{opacity:0;transform:translateY(10px)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-12px)}}
+.overlay{position:absolute;left:16px;right:16px;top:14px;z-index:5;padding:18px;border-radius:16px;background:var(--cream);box-shadow:0 6px 0 rgba(78,48,36,.12);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-weight:900;font-size:1.4rem}
+.overlay p{margin:0;font-size:.9rem;line-height:1.7;max-width:40ch}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;font-weight:700}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:50%;background:var(--pearl)}
+.legend i.j{border-radius:3px;background:#fff;box-shadow:inset 0 0 0 2px #e8dcc4}
+.legend i.c{border-radius:50% 50% 50% 0;background:var(--chili);transform:rotate(-45deg)}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:999px;background:var(--cocoa);color:var(--cream);font:900 1rem var(--body);padding:10px 24px;cursor:pointer}
+.keys{font-size:.78rem;color:var(--muted)}
+.rec{color:#d0464f;font-weight:900}
+button:focus-visible{outline:2px solid var(--cocoa);outline-offset:2px}
+</style>
+
+<header class="hud">
+  <div class="brand">珍珠接接樂</div>
+  <div class="stat"><span>第幾杯</span><b id="cups">1</b></div>
+  <div class="stat"><span>分數</span><b id="score">0</b></div>
+  <div class="stat"><span>辣度</span><div class="lives" id="lives"></div></div>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <div class="pop" id="pop" aria-live="polite"></div>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">珍珠接接樂</h1>
+    <p id="ov-text">左右拖曳杯子接住掉下來的料。裝滿二十顆珍珠就完成一杯，下一杯換口味。接到辣椒會辣到，被辣三次就收攤。</p>
+    <div class="legend"><span><i></i>珍珠 +1</span><span><i class="j"></i>椰果 +3</span><span><i class="c"></i>辣椒 別接</span></div>
+    <div class="row"><button class="btn" id="ov-btn">開店</button><span class="keys" id="ov-keys">電腦：滑鼠或 ← →</span></div>
+  </section>
+</main>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const cupsEl = $('cups'), scoreEl = $('score'), livesEl = $('lives'), pop = $('pop'), muteBtn = $('mute');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn'), ovKeys = $('ov-keys');
+
+let actx = null, muted = !!store.get('boba.muted', false);
+function tone(f, d = .07, type = 'sine', v = .06, slide = 0) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) {}
+}
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('boba.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) tone(880, .08); });
+function showPop(t) { pop.textContent = t; pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show'); }
+
+const W = 400, COUNTER = 30, FULL = 20;
+let H = 640, S = 1, DPR = 1;
+const cup = { x: W / 2, target: W / 2, w: 86, h: 108, y: 0, tilt: 0, squash: 0 };
+function fit() {
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S; cup.y = H - COUNTER - cup.h;
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+
+const FLAVORS = [
+  { name: '紅茶拿鐵', tea: '#c99a6b' }, { name: '抹茶拿鐵', tea: '#a4c46e' }, { name: '芋頭鮮奶', tea: '#bda6dc' },
+  { name: '黑糖鮮奶', tea: '#e6c9a4', stripe: '#6b3d1f' }, { name: '草莓奶綠', tea: '#f2a9b8' }
+];
+const dots = (() => {
+  const g = document.createElement('canvas'); g.width = g.height = 40;
+  const c = g.getContext('2d'); c.fillStyle = '#fff2f5';
+  c.beginPath(); c.arc(10, 10, 3.5, 0, 7); c.arc(30, 30, 3.5, 0, 7); c.fill();
+  return ctx.createPattern(g, 'repeat');
+})();
+// stable pseudo-random spots for pearls settled in the cup
+const SPOTS = Array.from({ length: 40 }, (_, i) => ({ u: ((i * 37) % 11) / 10, v: Math.floor(i / 6) + ((i * 13) % 5) / 10 }));
+
+let items = [], parts = [], state = 'ready', score = 0, lives = 3, combo = 0, cupN = 1, fill = 0, flavor = 0, elapsed = 0, spawnT = 0, serveT = 0, overAt = 0;
+let best = store.get('boba.best', 0);
+const keys = new Set();
+const mult = () => Math.min(5, 1 + Math.floor(combo / 10));
+
+function hud() {
+  cupsEl.textContent = cupN; scoreEl.textContent = score;
+  livesEl.innerHTML = [0, 1, 2].map(i => `<i class="${i < lives ? '' : 'lost'}"></i>`).join('');
+}
+function reset() {
+  items = []; parts = []; score = 0; lives = 3; combo = 0; cupN = 1; fill = 0; flavor = 0; elapsed = 0; spawnT = .5; serveT = 0;
+  cup.x = cup.target = W / 2; hud();
+}
+function start() {
+  if (state === 'play') return;
+  reset(); state = 'play'; ov.hidden = true; ovBtn.blur();
+  showPop(FLAVORS[0].name);
+}
+function spawn() {
+  const r = Math.random();
+  const chili = Math.min(.3, .07 + elapsed * .004);
+  const type = r < chili ? 'chili' : r < chili + .12 ? 'jelly' : 'pearl';
+  const vy = Math.min(400, 170 + elapsed * 2.4) + Math.random() * 40;
+  items.push({ type, x: 24 + Math.random() * (W - 48), y: -20, vy, rot: Math.random() * 6, vr: (Math.random() - .5) * 4, r: type === 'pearl' ? 9 : 11 });
+}
+function splash(x, y, col, n) {
+  for (let i = 0; i < n; i++) { const a = -Math.PI * Math.random(), v = 60 + Math.random() * 140; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: .5, col }); }
+}
+function catchItem(it) {
+  if (it.type === 'chili') {
+    lives--; combo = 0; cup.tilt = 1; splash(it.x, cup.y, '#e2322b', 10);
+    showPop(lives > 0 ? '好辣！' : '辣到收攤'); tone(160, .4, 'sawtooth', .06, .5);
+    hud(); if (lives <= 0) gameOver();
+    return;
+  }
+  combo++; cup.squash = 1;
+  const add = it.type === 'jelly' ? 3 : 1;
+  score += add * mult(); fill = Math.min(FULL, fill + (it.type === 'jelly' ? 2 : 1));
+  tone(it.type === 'jelly' ? 880 : 520 + (fill % 8) * 40, .06);
+  if (combo > 0 && combo % 10 === 0) showPop(`連接 ${combo} 顆 ×${mult()}`);
+  if (fill >= FULL) serve();
+  hud();
+}
+function serve() {
+  serveT = 1; const bonus = 30 + cupN * 10; score += bonus;
+  showPop(`第 ${cupN} 杯 ${FLAVORS[flavor].name} 完成 +${bonus}`);
+  [659, 784, 988].forEach((f, i) => setTimeout(() => tone(f, .12, 'triangle', .06), i * 90));
+}
+function gameOver() {
+  state = 'over'; overAt = performance.now();
+  const rec = score > best;
+  if (rec) { best = score; store.set('boba.best', best); }
+  ovTitle.textContent = '今天收攤';
+  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `做了 ${cupN - 1} 杯，賺到 ${score} 分。最高紀錄 ${best} 分。`;
+  ovBtn.textContent = '明天再開店'; ovKeys.textContent = '點擊畫面也能開始';
+  setTimeout(() => { if (state === 'over') ov.hidden = false; }, 700);
+}
+function pause() {
+  if (state !== 'play') return;
+  state = 'paused'; ovTitle.textContent = '暫停營業'; ovText.textContent = `第 ${cupN} 杯做到一半，目前 ${score} 分。`;
+  ovBtn.textContent = '繼續營業'; ovKeys.textContent = '';
+  ov.hidden = false;
+}
+
+/* ---------- input ---------- */
+const toX = e => (e.clientX - stage.getBoundingClientRect().left) / S;
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('.overlay')) return;
+  e.preventDefault();
+  if (state === 'ready' || (state === 'over' && performance.now() - overAt > 900)) start();
+  else if (state === 'paused') { state = 'play'; ov.hidden = true; }
+  cup.target = toX(e);
+});
+stage.addEventListener('pointermove', e => { if (state === 'play' && (e.pointerType === 'mouse' || e.buttons)) cup.target = toX(e); });
+ovBtn.addEventListener('click', () => { if (state === 'paused') { state = 'play'; ov.hidden = true; } else start(); });
+addEventListener('keydown', e => {
+  if (['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(e.code)) { keys.add(e.code); e.preventDefault(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') pause();
+  if ((e.code === 'Space' || e.code === 'Enter') && !(e.target.closest && e.target.closest('button'))) {
+    e.preventDefault(); if (state === 'paused') { state = 'play'; ov.hidden = true; } else if (state !== 'play') start();
+  }
+});
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => { keys.clear(); pause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+/* ---------- update ---------- */
+function update(dt) {
+  if (state === 'paused') return;
+  let dir = 0;
+  if (keys.has('ArrowLeft') || keys.has('KeyA')) dir--;
+  if (keys.has('ArrowRight') || keys.has('KeyD')) dir++;
+  if (dir) { cup.target = cup.x + dir * 30; }
+  const prev = cup.x;
+  cup.x += (cup.target - cup.x) * Math.min(1, dt * (dir ? 14 : 18));
+  cup.x = Math.max(cup.w / 2 + 4, Math.min(W - cup.w / 2 - 4, cup.x));
+  cup.tilt = Math.max(-1, Math.min(1, cup.tilt * .9 + (cup.x - prev) * .02));
+  cup.squash = Math.max(0, cup.squash - dt * 6);
+  for (const p of parts) { p.vy += 500 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
+  parts = parts.filter(p => p.life > 0);
+  if (serveT > 0) {
+    serveT -= dt;
+    if (serveT <= 0) { cupN++; fill = 0; flavor = (flavor + 1) % FLAVORS.length; hud(); showPop(FLAVORS[flavor].name); }
+  }
+  if (state !== 'play') return;
+  elapsed += dt; spawnT -= dt;
+  if (spawnT <= 0) { spawn(); spawnT = Math.max(.26, .62 - elapsed * .005) * (.7 + Math.random() * .6); }
+  const mouthY = cup.y + 4, half = cup.w / 2 - 6;
+  for (const it of items) {
+    const py = it.y;
+    it.y += it.vy * dt; it.rot += it.vr * dt;
+    if (!it.done && serveT <= 0 && py <= mouthY && it.y >= mouthY && Math.abs(it.x - cup.x) < half) { it.done = true; catchItem(it); }
+    else if (!it.done && it.y > H - COUNTER) {
+      it.done = true;
+      if (it.type !== 'chili') { if (serveT <= 0) combo = 0; splash(it.x, H - COUNTER, it.type === 'pearl' ? '#2a1a14' : '#ffffff', 4); }
+    }
+  }
+  items = items.filter(it => !it.done);
+}
+
+/* ---------- draw ---------- */
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function pearl(x, y, r) {
+  ctx.fillStyle = '#2a1a14'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.beginPath(); ctx.arc(x - r * .35, y - r * .35, r * .3, 0, Math.PI * 2); ctx.fill();
+}
+function drawItem(it) {
+  if (it.type === 'pearl') { pearl(it.x, it.y, it.r); return; }
+  ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.rot);
+  if (it.type === 'jelly') {
+    ctx.fillStyle = 'rgba(255,255,255,.92)'; rr(-9, -9, 18, 18, 4); ctx.fill();
+    ctx.strokeStyle = '#e4d6bb'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,214,120,.45)'; rr(-5, -5, 7, 7, 2); ctx.fill();
+  } else {
+    ctx.fillStyle = '#e2322b';
+    ctx.beginPath(); ctx.moveTo(-4, -10); ctx.quadraticCurveTo(10, -6, 6, 6); ctx.quadraticCurveTo(2, 14, -6, 14); ctx.quadraticCurveTo(0, 4, -8, -6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(1, -2, 2, 5, -.4, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#3d8c45'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-5, -9); ctx.quadraticCurveTo(-6, -15, -1, -17); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawCup() {
+  const f = FLAVORS[flavor], w = cup.w, h = cup.h * (1 - cup.squash * .05), bw = w * .76;
+  ctx.save(); ctx.translate(cup.x, cup.y + cup.h); ctx.rotate(cup.tilt * .08);
+  const path = () => { ctx.beginPath(); ctx.moveTo(-w / 2, -h); ctx.lineTo(w / 2, -h); ctx.lineTo(bw / 2, 0); ctx.lineTo(-bw / 2, 0); ctx.closePath(); };
+  ctx.save(); path(); ctx.clip();
+  const level = .35 + .6 * fill / FULL, top = -h * level;
+  ctx.fillStyle = f.tea; ctx.fillRect(-w, top, w * 2, h);
+  if (f.stripe) { ctx.fillStyle = f.stripe; ctx.globalAlpha = .55; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(-w / 2 + i * 22, 0); ctx.quadraticCurveTo(-w / 2 + i * 22 + 18, top * .5, -w / 2 + i * 22 + 6, top); ctx.lineTo(-w / 2 + i * 22 + 12, top); ctx.quadraticCurveTo(-w / 2 + i * 22 + 26, top * .5, -w / 2 + i * 22 + 10, 0); ctx.fill(); } ctx.globalAlpha = 1; }
+  ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(-w, top, w * 2, 3);
+  for (let i = 0; i < fill; i++) { const s = SPOTS[i]; pearl(-bw / 2 + 9 + s.u * (bw - 18), -8 - s.v * 11, 6.5); }
+  ctx.restore();
+  path(); ctx.strokeStyle = 'rgba(78,48,36,.55)'; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.moveTo(-w / 2 + 8, -h + 6); ctx.lineTo(-w / 2 + 14, -h + 6); ctx.lineTo(-bw / 2 + 12, -6); ctx.lineTo(-bw / 2 + 7, -6); ctx.fill();
+  ctx.fillStyle = 'rgba(78,48,36,.18)'; ctx.fillRect(-w / 2 - 3, -h - 3, w + 6, 5);
+  if (serveT > 0) {
+    // sealing film and straw go on when a cup is finished
+    ctx.fillStyle = '#fff'; ctx.fillRect(-w / 2 - 2, -h - 5, w + 4, 6);
+    ctx.fillStyle = '#ff8aa5'; for (let x = -w / 2; x < w / 2; x += 10) ctx.fillRect(x + 2, -h - 4, 4, 4);
+    ctx.strokeStyle = '#4fb39a'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(8, -h - 40 * Math.min(1, (1 - serveT) * 3)); ctx.lineTo(4, -20); ctx.stroke();
+  }
+  ctx.restore();
+}
+function draw() {
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0);
+  ctx.fillStyle = '#ffdbe4'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = dots; ctx.fillRect(0, 0, W, H - COUNTER);
+  ctx.fillStyle = '#ffeef2'; ctx.fillRect(0, 0, W, 26);
+  ctx.fillStyle = '#ffb3c6'; for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.arc(x + 20, 26, 20, 0, Math.PI); ctx.fill(); }
+  ctx.fillStyle = '#e0a77c'; ctx.fillRect(0, H - COUNTER, W, 6);
+  ctx.fillStyle = '#c98b5f'; ctx.fillRect(0, H - COUNTER + 6, W, COUNTER);
+  ctx.fillStyle = 'rgba(78,48,36,.12)'; ctx.beginPath(); ctx.ellipse(cup.x, H - COUNTER + 2, cup.w * .45, 5, 0, 0, Math.PI * 2); ctx.fill();
+  for (const it of items) drawItem(it);
+  drawCup();
+  for (const p of parts) { ctx.globalAlpha = Math.max(0, p.life * 2); ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  if (state !== 'ready') {
+    ctx.fillStyle = 'rgba(78,48,36,.55)'; ctx.font = '800 12px "Baloo 2", "Noto Sans TC", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(`${fill} / ${FULL}`, cup.x, cup.y - 10);
+  }
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
+  update(dt); draw();
+  requestAnimationFrame(frame);
+}
+// opening counter: a half-filled cup and a few pearls mid-air
+fill = 9;
+items = [{ type: 'pearl', x: 120, y: 180, vy: 0, rot: 0, vr: 0, r: 9 }, { type: 'jelly', x: 260, y: 240, vy: 0, rot: .4, vr: 0, r: 11 }, { type: 'pearl', x: 310, y: 120, vy: 0, rot: 0, vr: 0, r: 9 }, { type: 'chili', x: 80, y: 300, vy: 0, rot: .3, vr: 0, r: 11 }];
+hud();
+requestAnimationFrame(frame);
+})();
+</script>

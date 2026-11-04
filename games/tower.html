@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>疊疊塔</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+/* Layout: one portrait shaft centred on screen, headed by an elevator floor indicator; the sky darkens as the tower climbs */
+:root{
+  --shaft:#11152a;
+  --panel:#0a0d1c;
+  --edge:#2a3158;
+  --ink:#f3f0ff;
+  --muted:#a3abd0;
+  --lamp:#ffc247;
+  --display:"Bungee","Noto Sans TC",system-ui,sans-serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--shaft)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:var(--shaft);color:var(--ink);font-family:var(--body);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:520px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px}
+.brand{font-weight:900;font-size:1rem;letter-spacing:.12em;white-space:nowrap}
+.indicator{display:flex;align-items:baseline;gap:6px;padding:6px 14px 4px;border-radius:6px;background:var(--panel);border:1px solid var(--edge);font-family:var(--display);color:var(--lamp);text-shadow:0 0 12px rgba(255,194,71,.5);font-variant-numeric:tabular-nums}
+.indicator .arrow{font-size:.7rem;opacity:.3;transition:opacity .15s}
+.indicator.up .arrow{opacity:1}
+#floor{font-size:1.75rem;line-height:1;min-width:2ch;text-align:right}
+.indicator .f{font-size:.85rem}
+.side{display:flex;justify-content:flex-end;align-items:center;gap:10px}
+.best{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.best span{font-size:.68rem;color:var(--muted);letter-spacing:.14em}
+.best b{font-family:var(--display);font-weight:400;font-size:.95rem;font-variant-numeric:tabular-nums}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--edge);background:var(--panel);color:var(--ink);font-size:1rem;cursor:pointer;display:grid;place-items:center;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:14px;overflow:hidden;touch-action:none;cursor:pointer;background:#68a8dc;box-shadow:0 0 0 1px var(--edge),0 20px 60px rgba(0,0,0,.45)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pop{position:absolute;left:0;right:0;top:20%;text-align:center;font-family:var(--display);font-size:1.6rem;color:var(--lamp);text-shadow:0 2px 0 rgba(0,0,0,.35),0 0 18px rgba(255,194,71,.6);opacity:0;pointer-events:none}
+.pop.show{animation:pop .9s ease-out}
+@keyframes pop{0%{opacity:0;transform:translateY(10px) scale(.9)}15%{opacity:1;transform:none}70%{opacity:1}100%{opacity:0;transform:translateY(-24px)}}
+.overlay{position:absolute;top:16px;left:16px;right:16px;padding:18px 18px 16px;border-radius:12px;background:rgba(10,13,28,.84);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-size:1.4rem;font-weight:900;letter-spacing:.04em;text-wrap:balance}
+.overlay p{margin:0;font-size:.92rem;line-height:1.7;color:#d6daf0;max-width:40ch}
+.overlay .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:4px}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--lamp);color:#1d1606;font:900 1rem var(--body);padding:10px 20px;cursor:pointer;letter-spacing:.06em}
+.btn:hover{filter:brightness(1.06)}
+.keys{font-size:.78rem;color:var(--muted)}
+.rec{color:var(--lamp);font-weight:900}
+button:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){
+  .pop.show{animation:fade .9s}
+  @keyframes fade{0%,100%{opacity:0}20%,70%{opacity:1}}
+}
+</style>
+
+<header class="hud">
+  <div class="brand">疊疊塔</div>
+  <div class="indicator" id="ind" aria-label="目前樓層"><span class="arrow">▲</span><span id="floor">0</span><span class="f">F</span></div>
+  <div class="side">
+    <div class="best"><span>最高</span><b id="best">0F</b></div>
+    <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+  </div>
+</header>
+
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <div class="pop" id="pop" aria-live="polite"></div>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">把樓蓋上雲端</h1>
+    <p id="ov-text">樓層會左右滑動，點一下放下。超出下一層的部分會被切掉，樓面越蓋越窄；連續三次完美對齊，樓面會長回來一點。</p>
+    <div class="row"><button class="btn" id="ov-btn">開始蓋樓</button><span class="keys">點擊畫面・空白鍵</span></div>
+  </section>
+</main>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const floorEl = $('floor'), bestEl = $('best'), ind = $('ind'), pop = $('pop');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn'), muteBtn = $('mute');
+
+const W = 400, BH = 24, BASE_W = 200, PERFECT = 4, GROUND = 92;
+let H = 600, S = 1, DPR = 1;
+function fit() {
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR);
+  cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S;
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+
+/* ---------- sound ---------- */
+let actx = null, muted = !!store.get('tower.muted', false);
+function tone(f, d = .1, type = 'triangle', v = .06) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) {}
+}
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('tower.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) tone(660, .08); });
+
+/* ---------- helpers ---------- */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const mix = (c1, c2, t) => [0, 1, 2].map(i => Math.round(lerp(c1[i], c2[i], t)));
+const rgb = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+function hash(a, b) {
+  let h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+const hueFor = n => (198 + n * 9) % 360;
+
+/* ---------- scenery ---------- */
+const SKY = [
+  { a: 0,    top: [104, 168, 220], bot: [250, 212, 168] },
+  { a: 900,  top: [54, 54, 118],   bot: [226, 118, 126] },
+  { a: 2100, top: [7, 9, 30],      bot: [38, 32, 96] }
+];
+function skyAt(a) {
+  if (a <= SKY[0].a) return SKY[0];
+  for (let i = 1; i < SKY.length; i++) {
+    if (a <= SKY[i].a) { const p = SKY[i - 1], q = SKY[i], t = (a - p.a) / (q.a - p.a); return { top: mix(p.top, q.top, t), bot: mix(p.bot, q.bot, t) }; }
+  }
+  return SKY[SKY.length - 1];
+}
+const skyline = [];
+{ let x = -10, i = 0;
+  while (x < W + 10) {
+    const w = 22 + Math.random() * 34, h = 26 + Math.random() * 92, wins = [];
+    for (let wy = 6; wy < h - 4; wy += 9) for (let wx = 4; wx < w - 6; wx += 7) if (hash(i * 31 + wx, wy) < .2) wins.push([wx, wy]);
+    skyline.push({ x, w, h, wins }); x += w + 2 + Math.random() * 6; i++;
+  }
+}
+const stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.4 + .4, p: Math.random() * 6.28 }));
+const clouds = Array.from({ length: 8 }, (_, i) => ({ x: Math.random() * W, y: 170 + i * 180 + Math.random() * 80, w: 60 + Math.random() * 70, v: 5 + Math.random() * 10 }));
+
+/* ---------- state ---------- */
+let blocks = [], cur = null, debris = [], rings = [];
+let state = 'ready', floor = 0, combo = 0, perfects = 0;
+let camY = 0, camT = 0, zoom = 1, zoomT = 1, alt = 0, overAt = 0;
+let best = store.get('tower.best', 0);
+bestEl.textContent = best + 'F';
+
+function reset() {
+  blocks = [{ x: (W - BASE_W) / 2, w: BASE_W, y: 0, hue: hueFor(0) }];
+  cur = null; debris = []; rings = [];
+  floor = 0; combo = 0; perfects = 0; camT = 0; zoomT = 1;
+  floorEl.textContent = '0';
+  spawn();
+}
+function spawn() {
+  const last = blocks[blocks.length - 1], n = blocks.length, fromLeft = n % 2 === 1, w = last.w;
+  cur = { x: fromLeft ? -w * .6 : W - w * .4, y: last.y + BH, w, hue: hueFor(n), dir: fromLeft ? 1 : -1, speed: Math.min(150 + n * 6.5, 430) };
+}
+function place(b) {
+  blocks.push({ x: b.x, y: b.y, w: b.w, hue: b.hue });
+  floor = blocks.length - 1;
+  floorEl.textContent = floor;
+  ind.classList.add('up'); clearTimeout(place.t); place.t = setTimeout(() => ind.classList.remove('up'), 260);
+}
+function showPop(text) { pop.textContent = text; pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show'); }
+
+function drop() {
+  if (!cur) return;
+  const last = blocks[blocks.length - 1], off = cur.x - last.x, ad = Math.abs(off);
+  if (ad <= PERFECT) {
+    cur.x = last.x; combo++; perfects++;
+    if (combo >= 3 && cur.w < BASE_W) { const g = Math.min(12, BASE_W - cur.w); cur.x -= g / 2; cur.w += g; }
+    place(cur);
+    rings.push({ x: cur.x, y: cur.y, w: cur.w, t: 0 });
+    showPop(combo > 1 ? '完美 ×' + combo : '完美');
+    tone(523.25 * Math.pow(2, Math.min(combo - 1, 12) / 12), .18, 'triangle', .07);
+  } else {
+    const keepW = cur.w - ad;
+    if (keepW <= 0) {
+      debris.push({ x: cur.x, y: cur.y, w: cur.w, hue: cur.hue, vx: cur.dir * 70, vy: 60, rot: 0, vr: cur.dir * 2.4 });
+      cur = null; tone(140, .35, 'sawtooth', .05);
+      gameOver(); return;
+    }
+    combo = 0;
+    const s = Math.sign(off);
+    const keep = { x: s > 0 ? cur.x : last.x, y: cur.y, w: keepW, hue: cur.hue };
+    debris.push({ x: s > 0 ? cur.x + keepW : cur.x, y: cur.y, w: ad, hue: cur.hue, vx: s * 55, vy: 50, rot: 0, vr: s * (1.6 + Math.random() * 2) });
+    place(keep);
+    tone(330, .09, 'square', .035);
+  }
+  spawn();
+}
+
+function gameOver() {
+  state = 'over'; overAt = performance.now();
+  const top = blocks[blocks.length - 1];
+  zoomT = Math.min(1, (H - GROUND - 90) / (top.y + BH + 40));
+  camT = 0;
+  const rec = floor > best;
+  if (rec) { best = floor; store.set('tower.best', best); bestEl.textContent = best + 'F'; }
+  ovTitle.textContent = floor === 0 ? '還沒蓋起來就倒了' : `停在第 ${floor} 層`;
+  ovText.innerHTML = (rec && floor > 0 ? '<span class="rec">新紀錄！</span>' : '') + `完美對齊 ${perfects} 次，最高紀錄 ${best} 層。`;
+  ovBtn.textContent = '再蓋一棟';
+  setTimeout(() => { if (state === 'over') ov.hidden = false; }, 650);
+}
+function start() {
+  if (state === 'play') return;
+  reset(); state = 'play'; ov.hidden = true; ovBtn.blur();
+  zoom = 1; camY = 0; tone(392, .08);
+}
+function act() {
+  if (state === 'play') drop();
+  else if (state === 'ready') start();
+  else if (state === 'over' && performance.now() - overAt > 700) start();
+}
+
+/* ---------- input ---------- */
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('button')) return;
+  if (e.button > 0) return;
+  e.preventDefault(); act();
+});
+ovBtn.addEventListener('click', () => { if (state !== 'play') start(); });
+addEventListener('keydown', e => {
+  if (e.code !== 'Space' && e.code !== 'Enter' && e.code !== 'ArrowDown') return;
+  if (e.target.closest && e.target.closest('button')) return;
+  e.preventDefault(); if (!e.repeat) act();
+});
+
+/* ---------- update ---------- */
+function update(dt) {
+  if (cur && state !== 'over') {
+    cur.x += cur.dir * cur.speed * dt;
+    const minX = -cur.w * .6, maxX = W - cur.w * .4;
+    if (cur.x < minX) { cur.x = minX; cur.dir = 1; }
+    else if (cur.x > maxX) { cur.x = maxX; cur.dir = -1; }
+  }
+  if (state !== 'over') camT = Math.max(0, blocks[blocks.length - 1].y + BH * 2 + GROUND - H * .6);
+  camY += (camT - camY) * Math.min(1, dt * 4);
+  zoom += (zoomT - zoom) * Math.min(1, dt * 2.5);
+  if (state !== 'over') alt += (camY - alt) * Math.min(1, dt * 2);
+  for (const d of debris) { d.vy -= 1300 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.rot += d.vr * dt; }
+  debris = debris.filter(d => d.y > -400);
+  for (const r of rings) r.t += dt;
+  rings = rings.filter(r => r.t < .6);
+  for (const c of clouds) { c.x += c.v * dt; if (c.x > W + c.w) c.x = -c.w * 1.5; }
+}
+
+/* ---------- draw ---------- */
+function drawBlock(b, night) {
+  const x = b.x, y = -b.y - BH, w = b.w;
+  ctx.fillStyle = `hsl(${b.hue} 52% 58%)`; ctx.fillRect(x, y, w, BH);
+  ctx.fillStyle = `hsl(${b.hue} 70% 76%)`; ctx.fillRect(x, y, w, 3);
+  ctx.fillStyle = `hsl(${b.hue} 45% 40%)`; ctx.fillRect(x, y + BH - 3, w, 3);
+  // windows sit on a fixed 14-unit grid so a cut floor keeps its facade
+  const fi = Math.round(b.y / BH);
+  for (let gx = Math.ceil((x + 3) / 14) * 14; gx + 8 <= x + w - 3; gx += 14) {
+    const lit = hash(gx, fi) < .42;
+    ctx.fillStyle = lit ? `rgba(255,214,120,${.3 + .7 * night})` : `hsl(${b.hue} 40% 36%)`;
+    ctx.fillRect(gx, y + 7, 8, 10);
+  }
+}
+function drawClouds(night) {
+  const a = (1 - night) * .55; if (a <= .01) return;
+  ctx.fillStyle = `rgba(255,255,255,${a})`;
+  for (const c of clouds) {
+    const sy = H - GROUND - (c.y - camY * .6) * zoom;
+    if (sy < -40 || sy > H + 40) continue;
+    ctx.beginPath();
+    const parts = [[c.x, sy, c.w * .5, 10], [c.x - c.w * .18, sy - 7, c.w * .22, 9], [c.x + c.w * .12, sy - 9, c.w * .26, 11]];
+    for (const [cx, cy, rx, ry] of parts) { ctx.moveTo(cx + rx, cy); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); }
+    ctx.fill();
+  }
+}
+function drawSkyline(sky, night) {
+  const base = H - GROUND + camY * .35 * zoom + 4;
+  if (base - 130 > H) return;
+  ctx.fillStyle = rgb(mix(sky.bot, [16, 18, 40], .72));
+  for (const b of skyline) ctx.fillRect(b.x, base - b.h, b.w, b.h + H);
+  if (night > .15) {
+    ctx.fillStyle = `rgba(255,210,120,${(night - .15) * .75})`;
+    for (const b of skyline) for (const [wx, wy] of b.wins) ctx.fillRect(b.x + wx, base - b.h + wy, 3, 4);
+  }
+}
+function draw(t) {
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0);
+  const sky = skyAt(alt), night = clamp((alt - 350) / 1300, 0, 1);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, rgb(sky.top)); g.addColorStop(1, rgb(sky.bot));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  if (night > 0) {
+    ctx.fillStyle = '#fff';
+    for (const s of stars) { ctx.globalAlpha = night * (.55 + .45 * Math.sin(t * 2 + s.p)); ctx.fillRect(s.x * W, s.y * H * .85, s.s, s.s); }
+    ctx.globalAlpha = 1;
+  }
+  drawClouds(night);
+  drawSkyline(sky, night);
+
+  ctx.save();
+  ctx.translate(W / 2, H - GROUND); ctx.scale(zoom, zoom); ctx.translate(-W / 2, camY);
+  for (const d of debris) {
+    const cx = d.x + d.w / 2, cy = -d.y - BH / 2;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(d.rot); ctx.translate(-cx, -cy); drawBlock(d, night); ctx.restore();
+  }
+  ctx.fillStyle = '#1a1e35'; ctx.fillRect(-W * 2, 0, W * 5, GROUND + H * 4);
+  ctx.fillStyle = '#2c3358'; ctx.fillRect(-W * 2, 0, W * 5, 3);
+  ctx.font = '10px Bungee, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
+    const sy = H - GROUND + zoom * (camY - b.y - BH);
+    if (sy > H + 4 || sy + BH * zoom < -4) continue;
+    drawBlock(b, night);
+    if (i > 0 && i % 10 === 0) {
+      ctx.fillStyle = 'rgba(255,255,255,.75)';
+      ctx.fillRect(b.x - 10, -b.y - BH / 2, 6, 1.5);
+      ctx.fillText(i + 'F', b.x - 14, -b.y - BH / 2 + 1);
+    }
+  }
+  if (cur) drawBlock(cur, night);
+  for (const r of rings) {
+    const e = r.t * 40;
+    ctx.strokeStyle = `rgba(255,255,255,${1 - r.t / .6})`; ctx.lineWidth = 2;
+    ctx.strokeRect(r.x - e, -r.y - BH - e, r.w + e * 2, BH + e * 2);
+  }
+  ctx.restore();
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30);
+  lastT = now;
+  update(dt); draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+reset();
+requestAnimationFrame(frame);
+})();
+</script>

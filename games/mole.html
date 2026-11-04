@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>草皮打地鼠</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+/* Layout: a freshly mowed lawn seen from above — mowing stripes run across, nine burrows sit in a 3×3 plot, a timer fence runs along the top */
+:root{
+  --lawn:#6aa84f;
+  --lawn-2:#78b55b;
+  --soil:#4a3322;
+  --pit:#22160d;
+  --mole:#8a5a3b;
+  --mole-lo:#6b4329;
+  --snout:#f1b8a6;
+  --gold:#f2c230;
+  --bomb:#2a2a30;
+  --sky:#2f4d2a;
+  --cream:#fff6e2;
+  --text:#fffdf5;
+  --muted:#d5ecc8;
+  --num:"Lilita One","Noto Sans TC",system-ui,sans-serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--sky)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:var(--sky);color:var(--text);font-family:var(--body);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.05rem;letter-spacing:.08em;white-space:nowrap}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-family:var(--num);font-weight:400;font-size:1.3rem;font-variant-numeric:tabular-nums}
+.stat .x{color:var(--gold)}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text);cursor:pointer;font-size:.9rem;display:grid;place-items:center;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:16px;overflow:hidden;touch-action:manipulation;
+  background:repeating-linear-gradient(90deg,var(--lawn) 0 46px,var(--lawn-2) 46px 92px);box-shadow:inset 0 0 0 4px rgba(0,0,0,.12)}
+.stage.shake{animation:shake .3s}
+@keyframes shake{20%{transform:translate(-6px,2px)}40%{transform:translate(5px,-3px)}60%{transform:translate(-4px,3px)}80%{transform:translate(3px,-1px)}}
+.timer{position:absolute;left:14px;right:14px;top:12px;height:10px;border-radius:5px;background:rgba(0,0,0,.2);overflow:hidden}
+.timer i{display:block;height:100%;width:100%;background:var(--cream);transform-origin:left}
+.timer.low i{background:#ff7a59}
+.timer-label{position:absolute;right:16px;top:26px;font-family:var(--num);font-size:1.1rem;color:var(--cream);text-shadow:0 2px 0 rgba(0,0,0,.2)}
+.plot{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);display:grid;grid-template-columns:repeat(3,var(--h));gap:calc(var(--h) * .12)}
+.hole{position:relative;width:var(--h);height:var(--h);cursor:pointer}
+.hole::before{content:"";position:absolute;left:6%;right:6%;bottom:8%;height:34%;border-radius:50%;background:var(--soil);box-shadow:0 4px 0 rgba(0,0,0,.15)}
+.pit{position:absolute;left:14%;right:14%;bottom:14%;height:24%;border-radius:50%;background:var(--pit)}
+.slot{position:absolute;left:14%;right:14%;bottom:26%;height:80%;overflow:hidden}
+.mole{position:absolute;left:8%;right:8%;bottom:0;height:86%;border-radius:46% 46% 18% 18%;background:radial-gradient(circle at 50% 30%,#a06d4a,var(--mole) 60%,var(--mole-lo));transform:translateY(105%);transition:transform .12s ease-out}
+.hole.up .mole,.hole.hit .mole{transform:translateY(0)}
+.hole.hit .mole{transform:translateY(12%) scaleY(.82);transition:transform .08s}
+.mole .eye{position:absolute;top:26%;width:12%;aspect-ratio:1;border-radius:50%;background:#1a120c}
+.mole .eye.l{left:28%}.mole .eye.r{right:28%}
+.mole .eye::after{content:"";position:absolute;left:20%;top:15%;width:35%;height:35%;border-radius:50%;background:#fff}
+.mole .nose{position:absolute;left:50%;top:40%;width:26%;height:16%;transform:translateX(-50%);border-radius:50%;background:var(--snout)}
+.mole .nose::after{content:"";position:absolute;left:50%;top:-10%;width:40%;height:50%;transform:translateX(-50%);border-radius:50%;background:#5a2f22}
+.mole .teeth{position:absolute;left:50%;top:56%;width:14%;height:10%;transform:translateX(-50%);background:#fff;border-radius:0 0 3px 3px;box-shadow:inset 1px 0 0 #ddd}
+.hole.hit .eye{background:none}
+.hole.hit .eye::after{content:"×";left:0;top:-60%;width:auto;height:auto;background:none;color:#1a120c;font:900 calc(var(--h) * .12) var(--body)}
+.hole.gold .mole{background:radial-gradient(circle at 50% 30%,#ffe27a,var(--gold) 60%,#c99510)}
+.hole.gold .mole::before{content:"";position:absolute;left:50%;top:-12%;width:44%;height:22%;transform:translateX(-50%);background:var(--gold);clip-path:polygon(0 100%,10% 0,30% 60%,50% 0,70% 60%,90% 0,100% 100%)}
+.hole.bomb .mole{border-radius:50%;height:70%;left:16%;right:16%;background:radial-gradient(circle at 35% 30%,#5d5d66,var(--bomb) 60%)}
+.hole.bomb .mole > *{display:none}
+.hole.bomb .mole::before{content:"";position:absolute;left:52%;top:-14%;width:6%;height:20%;background:#c9b48a;transform:rotate(18deg)}
+.hole.bomb .mole::after{content:"";position:absolute;left:55%;top:-24%;width:16%;aspect-ratio:1;border-radius:50%;background:#ffb02e;box-shadow:0 0 8px #ff6b1a;animation:spark .2s infinite alternate}
+@keyframes spark{to{transform:scale(.6)}}
+.hole.bomb.hit .mole{background:radial-gradient(circle,#ffe08a,#ff7a1a 50%,transparent 72%);transform:translateY(0) scale(1.3)}
+.lip{position:absolute;left:10%;right:10%;bottom:12%;height:16%;border-radius:0 0 50% 50%/0 0 100% 100%;background:var(--soil)}
+.float{position:absolute;left:0;right:0;top:-6%;text-align:center;font-family:var(--num);font-size:calc(var(--h) * .22);color:var(--cream);text-shadow:0 2px 0 rgba(0,0,0,.3);opacity:0;pointer-events:none}
+.float.neg{color:#ffb0a0}
+.float.show{animation:float .6s ease-out}
+@keyframes float{0%{opacity:1;transform:translateY(10px)}100%{opacity:0;transform:translateY(-22px)}}
+.key{position:absolute;left:4%;bottom:2%;font-family:var(--num);font-size:.7rem;color:rgba(255,255,255,.55)}
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);z-index:5;padding:18px;border-radius:14px;background:var(--cream);color:#3b2a1a;box-shadow:0 8px 0 rgba(0,0,0,.15);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-weight:900;font-size:1.4rem}
+.overlay p{margin:0;font-size:.9rem;line-height:1.7;max-width:40ch}
+.res{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.res div{display:flex;flex-direction:column;padding:8px 10px;border-radius:10px;background:#f1e4c6}
+.res span{font-size:.66rem;color:#7a6446;letter-spacing:.1em}
+.res b{font-family:var(--num);font-weight:400;font-size:1.3rem}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:10px;background:#3e8a2e;color:#fff;font:900 1rem var(--body);padding:10px 22px;cursor:pointer;box-shadow:0 4px 0 #2a6420}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #2a6420}
+.keys{font-size:.78rem;color:#7a6446}
+.rec{color:#c0560e;font-weight:900}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.stage.shake{animation:none}.mole{transition:none}}
+</style>
+
+<header class="hud">
+  <div class="brand">草皮打地鼠</div>
+  <div class="stat"><span>連擊</span><b class="x" id="combo">×1</b></div>
+  <div class="stat"><span>分數</span><b id="score">0</b></div>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+<main class="stage" id="stage">
+  <div class="timer" id="timer"><i id="time"></i></div>
+  <div class="timer-label" id="time-label">45</div>
+  <div class="plot" id="plot"></div>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">草皮打地鼠</h1>
+    <p id="ov-text">一局 45 秒。地鼠探頭就敲下去，連續打中倍率會往上加。金色的地鼠多給分，炸彈千萬別碰。</p>
+    <div class="res" id="res" hidden>
+      <div><span>分數</span><b id="r-score">0</b></div>
+      <div><span>打中</span><b id="r-hits">0</b></div>
+      <div><span>命中率</span><b id="r-acc">0%</b></div>
+    </div>
+    <div class="row"><button class="btn" id="ov-btn">開打</button><span class="keys" id="ov-keys">電腦可用 QWE / ASD / ZXC</span></div>
+  </section>
+</main>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), plot = $('plot'), timeEl = $('time'), timer = $('timer'), timeLabel = $('time-label');
+const comboEl = $('combo'), scoreEl = $('score'), muteBtn = $('mute');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn'), ovKeys = $('ov-keys'), res = $('res');
+
+let actx = null, muted = !!store.get('mole.muted', false);
+function tone(f, d = .08, type = 'square', v = .04, slide = 0) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) {}
+}
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('mole.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) tone(660); });
+
+const ROUND = 45, KEYS = ['KeyQ', 'KeyW', 'KeyE', 'KeyA', 'KeyS', 'KeyD', 'KeyZ', 'KeyX', 'KeyC'];
+const holes = [];
+for (let i = 0; i < 9; i++) {
+  const el = document.createElement('div');
+  el.className = 'hole';
+  el.innerHTML = '<div class="pit"></div><div class="slot"><div class="mole"><i class="eye l"></i><i class="eye r"></i><i class="nose"></i><i class="teeth"></i></div></div><div class="lip"></div><div class="float"></div><span class="key">' + KEYS[i][3] + '</span>';
+  plot.appendChild(el);
+  const h = { el, fl: el.querySelector('.float'), st: 'down', type: 'normal', t: 0, stay: 1 };
+  el.addEventListener('pointerdown', e => { e.preventDefault(); whack(h); });
+  holes.push(h);
+}
+function layout() {
+  const r = stage.getBoundingClientRect();
+  const h = Math.max(70, Math.min((r.width - 32) / 3.3, (r.height - 70) / 3.3, 150));
+  plot.style.setProperty('--h', Math.floor(h) + 'px');
+}
+layout();
+if ('ResizeObserver' in window) new ResizeObserver(layout).observe(stage); else addEventListener('resize', layout);
+
+let state = 'ready', timeLeft = ROUND, elapsed = 0, spawnT = 0, score = 0, combo = 0, hits = 0, swings = 0, overAt = 0;
+let best = store.get('mole.best', 0);
+const mult = () => Math.min(5, 1 + Math.floor(combo / 5));
+function hud() { scoreEl.textContent = score; comboEl.textContent = '×' + mult(); }
+function render(h) {
+  h.el.className = 'hole' + (h.st === 'up' ? ' up' : h.st === 'hit' ? ' hit' : '') + (h.type !== 'normal' ? ' ' + h.type : '');
+}
+function floatText(h, text, neg) {
+  h.fl.textContent = text; h.fl.classList.toggle('neg', !!neg);
+  h.fl.classList.remove('show'); void h.fl.offsetWidth; h.fl.classList.add('show');
+}
+function spawn() {
+  const free = holes.filter(h => h.st === 'down');
+  if (!free.length) return;
+  const h = free[Math.floor(Math.random() * free.length)];
+  const r = Math.random();
+  h.type = elapsed > 6 && r < .14 ? 'bomb' : r > .93 ? 'gold' : 'normal';
+  h.st = 'up'; h.t = 0;
+  h.stay = Math.max(.55, 1.2 - elapsed * .013) * (h.type === 'gold' ? .75 : h.type === 'bomb' ? 1.3 : 1);
+  render(h);
+}
+function whack(h) {
+  if (state !== 'play') return;
+  swings++;
+  if (h.st !== 'up') { combo = 0; hud(); tone(120, .05, 'triangle', .03); return; }
+  h.st = 'hit'; h.t = 0; render(h);
+  if (h.type === 'bomb') {
+    score = Math.max(0, score - 50); combo = 0;
+    floatText(h, '-50', true); tone(70, .5, 'sawtooth', .07, .4);
+    stage.classList.remove('shake'); void stage.offsetWidth; stage.classList.add('shake');
+  } else {
+    hits++; combo++;
+    const pts = (h.type === 'gold' ? 50 : 10) * mult();
+    score += pts; floatText(h, '+' + pts);
+    tone(h.type === 'gold' ? 1047 : 330 + Math.min(combo, 15) * 30, .07, 'square', .04);
+  }
+  hud();
+}
+function start() {
+  if (state === 'play') return;
+  ov.hidden = true; ovBtn.blur();
+  state = 'play'; timeLeft = ROUND; elapsed = 0; spawnT = .4; score = 0; combo = 0; hits = 0; swings = 0;
+  holes.forEach(h => { h.st = 'down'; h.type = 'normal'; render(h); });
+  hud();
+}
+function end() {
+  state = 'over'; overAt = performance.now();
+  holes.forEach(h => { h.st = 'down'; render(h); });
+  const rec = score > best;
+  if (rec) { best = score; store.set('mole.best', best); }
+  tone(523, .1, 'triangle'); setTimeout(() => tone(392, .25, 'triangle'), 120);
+  ovTitle.textContent = rec ? '新紀錄！' : '時間到';
+  ovText.textContent = `最高紀錄 ${best} 分。`;
+  $('r-score').textContent = score; $('r-hits').textContent = hits;
+  $('r-acc').textContent = swings ? Math.round(hits / swings * 100) + '%' : '0%';
+  res.hidden = false; ovBtn.textContent = '再打一局'; ovKeys.textContent = '空白鍵也能開始';
+  setTimeout(() => { if (state === 'over') ov.hidden = false; }, 400);
+}
+function pause() {
+  if (state !== 'play') return;
+  state = 'paused'; ovTitle.textContent = '暫停中'; ovText.textContent = `還剩 ${Math.ceil(timeLeft)} 秒，目前 ${score} 分。`;
+  res.hidden = true; ovBtn.textContent = '繼續'; ovKeys.textContent = '';
+  ov.hidden = false;
+}
+ovBtn.addEventListener('click', () => {
+  if (state === 'paused') { state = 'play'; ov.hidden = true; ovBtn.blur(); return; }
+  if (state === 'over' && performance.now() - overAt < 700) return;
+  start();
+});
+addEventListener('keydown', e => {
+  const i = KEYS.indexOf(e.code);
+  if (i >= 0 && !e.repeat) { e.preventDefault(); whack(holes[i]); return; }
+  const n = e.code.startsWith('Numpad') ? +e.code.slice(6) : NaN;
+  if (n >= 1 && n <= 9 && !e.repeat) { const map = [7, 8, 9, 4, 5, 6, 1, 2, 3]; whack(holes[map.indexOf(n)]); return; }
+  if ((e.code === 'Space' || e.code === 'Enter') && !ov.hidden && !(e.target.closest && e.target.closest('button'))) { e.preventDefault(); ovBtn.click(); }
+  if (e.code === 'KeyP' || e.code === 'Escape') pause();
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), .1); lastT = now;
+  if (state === 'play') {
+    elapsed += dt; timeLeft -= dt; spawnT -= dt;
+    if (spawnT <= 0) {
+      spawn(); if (elapsed > 15 && Math.random() < .35) spawn();
+      spawnT = Math.max(.36, .95 - elapsed * .013);
+    }
+    for (const h of holes) {
+      if (h.st === 'up') { h.t += dt; if (h.t > h.stay) { if (h.type !== 'bomb') { combo = 0; hud(); } h.st = 'down'; render(h); } }
+      else if (h.st === 'hit') { h.t += dt; if (h.t > .32) { h.st = 'down'; render(h); } }
+    }
+    if (timeLeft <= 0) { timeLeft = 0; end(); }
+  }
+  timeEl.style.transform = `scaleX(${Math.max(0, timeLeft / ROUND)})`;
+  timer.classList.toggle('low', timeLeft < 10 && state === 'play');
+  timeLabel.textContent = Math.ceil(timeLeft);
+  requestAnimationFrame(frame);
+}
+// opening lawn: a few residents peeking out
+[1, 3, 8].forEach((i, k) => { holes[i].st = 'up'; holes[i].type = k === 1 ? 'gold' : 'normal'; render(holes[i]); });
+hud();
+requestAnimationFrame(frame);
+})();
+</script>

@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>麻將 2048</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+/* Layout: a mahjong table — felt fills the screen, the 4×4 board is a wooden tray, every tile is ivory with a green back */
+:root{
+  --felt:#1f5a42;
+  --felt-hi:#26674c;
+  --tray:#5b3a22;
+  --tray-edge:#3b2412;
+  --well:#183f2f;
+  --ivory:#f5efdf;
+  --back:#2e8a5e;
+  --back-dark:#1b6142;
+  --ink:#1b1b1b;
+  --red:#c32a2e;
+  --green:#1f7a45;
+  --blue:#1f4f97;
+  --gold:#f3d98d;
+  --text:#eef3ea;
+  --muted:#a9c6b5;
+  --serif:"Noto Serif TC","Songti TC",serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--felt)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:radial-gradient(120% 80% at 50% 40%,var(--felt-hi),var(--felt) 70%);
+  color:var(--text);font-family:var(--body);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:10px}
+.brand{flex:1;min-width:0;font-family:var(--serif);font-weight:900;font-size:1.15rem;letter-spacing:.06em;white-space:nowrap}
+.brand em{font-style:normal;color:var(--gold)}
+.box{display:flex;flex-direction:column;align-items:center;min-width:64px;padding:4px 10px;border-radius:8px;background:rgba(0,0,0,.22);line-height:1.2}
+.box span{font-size:.64rem;color:var(--muted);letter-spacing:.14em}
+.box b{font-family:var(--serif);font-weight:900;font-size:1.05rem;font-variant-numeric:tabular-nums}
+.box.bump b{animation:bump .25s}
+@keyframes bump{50%{transform:scale(1.15)}}
+.icon-btn{height:34px;min-width:34px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.18);color:var(--text);cursor:pointer;font:700 .85rem var(--body);display:inline-grid;place-items:center}
+.icon-btn:disabled{opacity:.4;cursor:default}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.bar{width:100%;max-width:520px;display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.bar .hint{flex:1;font-size:.78rem;color:var(--muted)}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;display:grid;place-items:center;touch-action:none}
+.board{position:relative;background:var(--tray);border-radius:14px;box-shadow:inset 0 0 0 3px var(--tray-edge),0 14px 40px rgba(0,0,0,.4)}
+.well{position:absolute;width:var(--cell);height:var(--cell);border-radius:8px;background:var(--well);box-shadow:inset 0 3px 6px rgba(0,0,0,.35)}
+.tile{position:absolute;left:0;top:0;width:var(--cell);height:var(--cell);z-index:2;
+  transform:translate(calc(var(--gap) + var(--c) * (var(--cell) + var(--gap))),calc(var(--gap) + var(--r) * (var(--cell) + var(--gap)) - 5px));
+  transition:transform .1s ease-in-out}
+.tile.gone{z-index:1}
+.face{position:absolute;inset:0;border-radius:8px;background:linear-gradient(#fbf7ec,var(--ivory) 60%,#e9e0c8);
+  box-shadow:0 5px 0 var(--back),0 7px 0 var(--back-dark),0 10px 14px rgba(0,0,0,.35);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2%;color:var(--green)}
+.face b{font-family:var(--serif);font-weight:900;line-height:1;font-size:calc(var(--cell) * .4);font-variant-numeric:lining-nums}
+.face small{font-family:var(--serif);font-weight:700;font-size:calc(var(--cell) * .14);letter-spacing:.08em;opacity:.85}
+.tile.new .face{animation:appear .16s ease-out .08s backwards}
+.tile.merge .face{animation:merge .2s ease-out .08s backwards}
+@keyframes appear{from{transform:scale(.2);opacity:0}}
+@keyframes merge{0%{transform:scale(.6)}60%{transform:scale(1.12)}100%{transform:none}}
+.t1 .face,.t4 .face,.t7 .face{color:var(--green)}
+.t2 .face,.t5 .face,.t8 .face{color:var(--blue)}
+.t3 .face,.t6 .face,.t9 .face{color:var(--red)}
+.t10 .face,.t11 .face,.t12 .face,.t13 .face,.t14 .face{background:linear-gradient(#fff6d6,var(--gold) 70%,#e3c46c);color:var(--red)}
+.t11 .face{color:var(--green)}
+.d3 b{font-size:calc(var(--cell) * .34)}
+.d4 b{font-size:calc(var(--cell) * .27)}
+.d5 b{font-size:calc(var(--cell) * .22)}
+.pop{position:absolute;left:0;right:0;top:6%;text-align:center;font-family:var(--serif);font-weight:900;font-size:1.4rem;color:var(--gold);text-shadow:0 2px 0 rgba(0,0,0,.35);opacity:0;pointer-events:none;z-index:5}
+.pop.show{animation:pop 1.3s ease-out}
+@keyframes pop{0%{opacity:0;transform:translateY(8px)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);z-index:6;padding:18px;border-radius:12px;background:rgba(17,40,30,.92);border:1px solid rgba(243,217,141,.4);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-family:var(--serif);font-weight:900;font-size:1.45rem;text-wrap:balance}
+.overlay p{margin:0;font-size:.92rem;line-height:1.7;color:#d6e6dc;max-width:40ch}
+.btn{align-self:flex-start;appearance:none;border:0;border-radius:8px;background:var(--gold);color:#3a2a0a;font:900 1rem var(--body);padding:10px 20px;cursor:pointer;letter-spacing:.06em}
+.rec{color:var(--gold);font-weight:900}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}.tile.new .face,.tile.merge .face{animation:none}}
+</style>
+
+<header class="hud">
+  <div class="brand">麻將 <em>2048</em></div>
+  <div class="box" id="score-box"><span>分數</span><b id="score">0</b></div>
+  <div class="box"><span>最高</span><b id="best">0</b></div>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+<div class="bar">
+  <span class="hint">滑動或方向鍵，同牌合一，合出「發財」就是 2048</span>
+  <button class="icon-btn" id="undo">悔牌 3</button>
+  <button class="icon-btn" id="new">新局</button>
+</div>
+<main class="stage" id="stage">
+  <div class="board" id="board"></div>
+  <div class="pop" id="pop" aria-live="polite"></div>
+  <section class="overlay" id="overlay" hidden>
+    <h1 id="ov-title">沒有牌可以動了</h1>
+    <p id="ov-text"></p>
+    <button class="btn" id="ov-btn">再開一局</button>
+  </section>
+</main>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), board = $('board'), scoreEl = $('score'), scoreBox = $('score-box'), bestEl = $('best');
+const pop = $('pop'), ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn');
+const undoBtn = $('undo'), newBtn = $('new'), muteBtn = $('mute');
+
+let actx = null, muted = !!store.get('mj2048.muted', false);
+function tone(f, d = .08, type = 'triangle', v = .05) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) {}
+}
+// two short knocks: tiles clacking on the table
+function clack(big) { tone(big ? 520 : 760, .05, 'square', .03); setTimeout(() => tone(big ? 390 : 620, .05, 'square', .025), 35); }
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('mj2048.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) clack(); });
+function showPop(t) { pop.textContent = t; pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show'); }
+
+const N = 4;
+// value 2^k carries the name of the k-th mahjong tile: 2 = 一萬 … 512 = 九萬, 1024 = 東風, 2048 = 發財
+const NAMES = ['', '一萬', '二萬', '三萬', '四萬', '五萬', '六萬', '七萬', '八萬', '九萬', '東風', '發財', '紅中', '白板', '北風'];
+let cells = [], score = 0, best = store.get('mj2048.best', 0), undos = 3, history = [], won = false, over = false;
+bestEl.textContent = best;
+
+function layout() {
+  const r = stage.getBoundingClientRect();
+  const size = Math.max(200, Math.min(r.width, r.height - 8, 500));
+  const gap = Math.round(size * .03), cell = (size - gap * (N + 1)) / N;
+  board.style.width = board.style.height = size + 'px';
+  board.style.setProperty('--cell', cell + 'px');
+  board.style.setProperty('--gap', gap + 'px');
+  board.querySelectorAll('.well').forEach((w, i) => {
+    w.style.left = (gap + (i % N) * (cell + gap)) + 'px';
+    w.style.top = (gap + Math.floor(i / N) * (cell + gap)) + 'px';
+  });
+}
+for (let i = 0; i < N * N; i++) { const w = document.createElement('div'); w.className = 'well'; board.appendChild(w); }
+layout();
+if ('ResizeObserver' in window) new ResizeObserver(layout).observe(stage); else addEventListener('resize', layout);
+
+function render(t) {
+  const k = Math.log2(t.v);
+  t.el.className = `tile t${Math.min(k, 14)} d${String(t.v).length}` + (t.anim ? ' ' + t.anim : '');
+  t.el.style.setProperty('--r', t.r); t.el.style.setProperty('--c', t.c);
+  t.el.querySelector('b').textContent = t.v;
+  t.el.querySelector('small').textContent = NAMES[k] || '';
+}
+function addTile(v, r, c, anim) {
+  const el = document.createElement('div');
+  el.innerHTML = '<div class="face"><b></b><small></small></div>';
+  const t = { v, r, c, el, anim };
+  render(t); board.appendChild(el);
+  cells[r * N + c] = t;
+  return t;
+}
+function addRandom() {
+  const empty = [];
+  for (let i = 0; i < N * N; i++) if (!cells[i]) empty.push(i);
+  if (!empty.length) return;
+  const i = empty[Math.floor(Math.random() * empty.length)];
+  addTile(Math.random() < .9 ? 2 : 4, Math.floor(i / N), i % N, 'new');
+}
+function rebuild(vals) {
+  board.querySelectorAll('.tile').forEach(e => e.remove());
+  cells = Array(N * N).fill(null);
+  vals.forEach((v, i) => { if (v) addTile(v, Math.floor(i / N), i % N, null); });
+}
+function hud(bump) {
+  scoreEl.textContent = score;
+  if (bump) { scoreBox.classList.remove('bump'); void scoreBox.offsetWidth; scoreBox.classList.add('bump'); }
+  if (score > best) { best = score; bestEl.textContent = best; store.set('mj2048.best', best); }
+  undoBtn.textContent = '悔牌 ' + undos;
+  undoBtn.disabled = undos <= 0 || !history.length || over;
+}
+function newGame() {
+  ov.hidden = true; over = false; won = false; score = 0; undos = 3; history = [];
+  rebuild(Array(N * N).fill(0));
+  addRandom(); addRandom(); hud();
+}
+function canMove() {
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const t = cells[r * N + c];
+    if (!t) return true;
+    if (c < N - 1 && cells[r * N + c + 1] && cells[r * N + c + 1].v === t.v) return true;
+    if (r < N - 1 && cells[(r + 1) * N + c] && cells[(r + 1) * N + c].v === t.v) return true;
+  }
+  return false;
+}
+function move(dir) {
+  if (over) return;
+  const [dr, dc] = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1] }[dir];
+  const rows = [0, 1, 2, 3], cols = [0, 1, 2, 3];
+  if (dr === 1) rows.reverse();
+  if (dc === 1) cols.reverse();
+  const snap = { vals: cells.map(t => t ? t.v : 0), score };
+  const merged = new Set(), dead = [];
+  let moved = false, gained = 0;
+  for (const r of rows) for (const c of cols) {
+    const t = cells[r * N + c];
+    if (!t) continue;
+    t.anim = null;
+    let nr = r, nc = c, didMerge = false;
+    for (;;) {
+      const tr = nr + dr, tc = nc + dc;
+      if (tr < 0 || tr >= N || tc < 0 || tc >= N) break;
+      const o = cells[tr * N + tc];
+      if (!o) { nr = tr; nc = tc; continue; }
+      if (o.v === t.v && !merged.has(o)) {
+        cells[r * N + c] = null; cells[tr * N + tc] = null;
+        t.r = tr; t.c = tc; render(t);
+        dead.push(t, o);
+        const nt = addTile(t.v * 2, tr, tc, 'merge');
+        merged.add(nt); gained += nt.v; moved = true; didMerge = true;
+      }
+      break;
+    }
+    if (didMerge) continue;
+    if (nr !== r || nc !== c) {
+      cells[r * N + c] = null; cells[nr * N + nc] = t;
+      t.r = nr; t.c = nc; render(t); moved = true;
+    }
+  }
+  if (!moved) return;
+  dead.forEach(t => { t.el.classList.add('gone'); setTimeout(() => t.el.remove(), 120); });
+  history.push(snap); if (history.length > 20) history.shift();
+  score += gained;
+  addRandom();
+  clack(gained > 0);
+  if (!won && [...merged].some(t => t.v >= 2048)) { won = true; showPop('發財！合出 2048'); [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, .14), i * 110)); }
+  else if (gained >= 256) showPop('+' + gained);
+  hud(gained > 0);
+  if (!canMove()) {
+    over = true; hud();
+    const top = Math.max(...cells.map(t => t ? t.v : 0));
+    ovTitle.textContent = '沒有牌可以動了';
+    ovText.innerHTML = (score >= best && score > 0 ? '<span class="rec">新紀錄！</span>' : '') + `最大的牌是 ${top}（${NAMES[Math.log2(top)] || ''}），這局 ${score} 分。`;
+    setTimeout(() => { if (over) ov.hidden = false; }, 500);
+  }
+}
+function undo() {
+  if (undos <= 0 || !history.length || over) return;
+  const s = history.pop(); undos--; score = s.score;
+  rebuild(s.vals); hud(); tone(300, .1);
+}
+
+/* ---------- input ---------- */
+let sx = 0, sy = 0, tracking = false;
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('button') || e.target.closest('.overlay')) return;
+  tracking = true; sx = e.clientX; sy = e.clientY; e.preventDefault();
+});
+stage.addEventListener('pointermove', e => {
+  if (!tracking) return;
+  const dx = e.clientX - sx, dy = e.clientY - sy;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 26) return;
+  tracking = false;
+  move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+});
+const stopTrack = () => { tracking = false; };
+stage.addEventListener('pointerup', stopTrack);
+stage.addEventListener('pointercancel', stopTrack);
+addEventListener('keydown', e => {
+  const m = { ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' }[e.code];
+  if (m) { e.preventDefault(); move(m); return; }
+  if (e.code === 'KeyZ' || e.code === 'KeyU') undo();
+  if ((e.code === 'Enter' || e.code === 'Space') && over) { e.preventDefault(); newGame(); }
+});
+undoBtn.addEventListener('click', () => { undo(); undoBtn.blur(); });
+newBtn.addEventListener('click', () => { newGame(); newBtn.blur(); });
+ovBtn.addEventListener('click', newGame);
+
+newGame();
+})();
+</script>

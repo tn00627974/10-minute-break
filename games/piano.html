@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>月光鋼琴</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;700&family=Noto+Serif+TC:wght@500;700;900&display=swap">
+<style>
+/* Layout: a night-blue concert hall framing one ivory keyboard lane; the score floats over the falling ebony tiles like a programme number */
+:root{
+  --hall:#0d1324;
+  --hall-hi:#18213d;
+  --ivory:#f6f1e6;
+  --ebony:#141414;
+  --brass:#d8b469;
+  --wrong:#d64040;
+  --text:#ece7da;
+  --muted:#9aa2bd;
+  --num:"Cormorant Garamond","Noto Serif TC",Georgia,serif;
+  --serif:"Noto Serif TC","Songti TC",serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--hall)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:radial-gradient(90% 60% at 50% 0%,var(--hall-hi),var(--hall) 70%);
+  color:var(--text);font-family:var(--serif);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:460px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.brand b{font-weight:900;font-size:1.05rem;letter-spacing:.16em}
+.brand span{font-size:.72rem;color:var(--brass);letter-spacing:.1em}
+.best{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.best span{font-size:.64rem;color:var(--muted);letter-spacing:.14em}
+.best b{font-family:var(--num);font-weight:700;font-size:1.3rem;font-variant-numeric:lining-nums tabular-nums}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid #2c3658;background:transparent;color:var(--text);cursor:pointer;font-size:.9rem;display:grid;place-items:center;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:460px;border-radius:6px;overflow:hidden;touch-action:none;background:var(--ivory);box-shadow:0 0 0 6px #1d1a16,0 0 0 7px var(--brass),0 24px 60px rgba(0,0,0,.6)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.overlay{position:absolute;left:14px;right:14px;top:16px;z-index:5;padding:18px;border-radius:8px;background:rgba(13,19,36,.94);border:1px solid var(--brass);display:flex;flex-direction:column;gap:10px;color:var(--text)}
+.overlay h1{margin:0;font-weight:900;font-size:1.35rem;letter-spacing:.12em}
+.overlay p{margin:0;font-size:.9rem;line-height:1.75;color:#cfd3e2;max-width:40ch}
+.pieces{display:flex;gap:6px;flex-wrap:wrap}
+.pieces button{appearance:none;border:1px solid #3a4468;border-radius:999px;background:transparent;color:var(--text);font:700 .82rem var(--serif);padding:6px 12px;cursor:pointer}
+.pieces button[aria-pressed="true"]{background:var(--brass);border-color:var(--brass);color:#22190a}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:6px;background:var(--ivory);color:var(--ebony);font:900 1rem var(--serif);padding:10px 22px;cursor:pointer;letter-spacing:.14em}
+.keys{font-size:.78rem;color:var(--muted)}
+.rec{color:var(--brass);font-weight:900}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+</style>
+
+<header class="hud">
+  <div class="brand"><b>月光鋼琴</b><span id="piece">曲目：小星星</span></div>
+  <div class="best"><span>最高</span><b id="best">0</b></div>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">月光鋼琴</h1>
+    <p id="ov-text">只踩黑鍵。由下往上依序點，每點一下就彈出曲子的下一個音。點到白鍵、或讓黑鍵溜出底部，演奏就結束；越彈越快。</p>
+    <div class="pieces" id="pieces" role="group" aria-label="曲目">
+      <button data-m="0" aria-pressed="true">小星星</button>
+      <button data-m="1" aria-pressed="false">歡樂頌</button>
+      <button data-m="2" aria-pressed="false">給愛麗絲</button>
+    </div>
+    <div class="row"><button class="btn" id="ov-btn">點最下面的「開始」</button><span class="keys">電腦可用 D F J K 對應四條鍵</span></div>
+  </section>
+</main>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const bestEl = $('best'), pieceEl = $('piece'), muteBtn = $('mute');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn'), piecesEl = $('pieces');
+
+const MELODIES = [
+  { name: '小星星', notes: [60,60,67,67,69,69,67, 65,65,64,64,62,62,60, 67,67,65,65,64,64,62, 67,67,65,65,64,64,62, 60,60,67,67,69,69,67, 65,65,64,64,62,62,60] },
+  { name: '歡樂頌', notes: [64,64,65,67,67,65,64,62,60,60,62,64,64,62,62, 64,64,65,67,67,65,64,62,60,60,62,64,62,60,60] },
+  { name: '給愛麗絲', notes: [76,75,76,75,76,71,74,72,69, 60,64,69,71, 64,68,71,72, 64,76,75,76,75,76,71,74,72,69, 60,64,69,71, 64,72,71,69] }
+];
+let melody = Math.min(2, Math.max(0, store.get('piano.piece', 0) | 0)), noteIdx = 0;
+
+let actx = null, muted = !!store.get('piano.muted', false);
+function audio() {
+  actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+// a soft struck-string voice: fundamental plus a quiet octave, fast attack, long decay
+function note(midi, vel = 1) {
+  if (muted) return;
+  try {
+    const a = audio(), t = a.currentTime, f = 440 * Math.pow(2, (midi - 69) / 12);
+    const g = a.createGain(); g.connect(a.destination);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.16 * vel, t + .008); g.gain.exponentialRampToValueAtTime(.0001, t + 1.4);
+    [[f, 'triangle', 1], [f * 2, 'sine', .35], [f * 3, 'sine', .08]].forEach(([fr, type, amp]) => {
+      const o = a.createOscillator(), og = a.createGain();
+      o.type = type; o.frequency.value = fr; og.gain.value = amp;
+      o.connect(og); og.connect(g); o.start(t); o.stop(t + 1.5);
+    });
+  } catch (e) {}
+}
+function clash() { if (muted) return; [48, 49, 54, 55].forEach(m => note(m, .9)); }
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('piano.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) note(72); });
+
+const W = 400, LANES = 4, LW = W / LANES;
+let H = 600, S = 1, DPR = 1, rowH = 150;
+function fit() {
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  const oldRow = rowH;
+  S = r.width / W; H = r.height / S; rowH = H / 4;
+  if (oldRow && rows.length) { const k = rowH / oldRow; rows.forEach(rw => { rw.y *= k; }); }
+}
+let rows = [], state = 'ready', speed = 0, hits = 0, failT = 0, fail = null, overAt = 0, flash = [];
+let best = store.get('piano.best', 0);
+bestEl.textContent = best;
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+
+function pickLane(prev) { let l; do { l = Math.floor(Math.random() * LANES); } while (l === prev && Math.random() < .6); return l; }
+function reset() {
+  rows = []; speed = 0; hits = 0; noteIdx = 0; fail = null; flash = [];
+  let lane = -1;
+  for (let i = 0; i < 6; i++) { lane = pickLane(lane); rows.push({ y: H - rowH * (i + 1), lane, hit: false, start: i === 0 }); }
+}
+function setPiece(i) {
+  melody = i; store.set('piano.piece', i);
+  pieceEl.textContent = '曲目：' + MELODIES[i].name;
+  piecesEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.m === i)));
+}
+setPiece(melody);
+piecesEl.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; setPiece(+b.dataset.m); note(MELODIES[melody].notes[0]); });
+
+const target = () => rows.find(r => !r.hit);
+function playNext() {
+  const m = MELODIES[melody].notes;
+  note(m[noteIdx % m.length]);
+  noteIdx++;
+}
+function hit(r) {
+  r.hit = true; r.hitT = 0; hits++;
+  playNext();
+  if (state === 'ready') { state = 'play'; ov.hidden = true; speed = 1.7; }
+}
+function lose(lane, r, missed) {
+  state = 'fail'; failT = 1; fail = { lane, r, missed };
+  if (missed) { const shift = r.y - (H - rowH); rows.forEach(x => { x.y -= shift; }); }
+  clash();
+}
+function gameOver() {
+  state = 'over'; overAt = performance.now();
+  const rec = hits > best;
+  if (rec) { best = hits; store.set('piano.best', best); bestEl.textContent = best; }
+  ovTitle.textContent = fail && fail.missed ? '漏了一個鍵' : '踩到白鍵了';
+  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `《${MELODIES[melody].name}》彈了 ${hits} 個音，最高 ${best} 個。換首曲子或直接再彈一次。`;
+  ovBtn.textContent = '再彈一次';
+  ov.hidden = false;
+}
+function restart() { reset(); state = 'ready'; ovTitle.textContent = '月光鋼琴'; ovBtn.textContent = '點最下面的「開始」'; ov.hidden = true; }
+
+function press(lane, y) {
+  if (state === 'over' || state === 'fail') return;
+  const t = target(); if (!t) return;
+  // taps outside the next row to play are ignored, so a quick double-tap on a played key never ends the piece
+  if (y !== null && !(y >= t.y && y < t.y + rowH)) return;
+  if (lane === t.lane) hit(t);
+  else if (state === 'play') lose(lane, t, false);
+}
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('.overlay')) return;
+  e.preventDefault();
+  if (state === 'over') { if (performance.now() - overAt > 600) restart(); return; }
+  const r = stage.getBoundingClientRect();
+  const x = (e.clientX - r.left) / S, y = (e.clientY - r.top) / S;
+  press(Math.max(0, Math.min(LANES - 1, Math.floor(x / LW))), y);
+});
+ovBtn.addEventListener('click', () => { if (state === 'over') restart(); else ov.hidden = true; ovBtn.blur(); });
+const KEYMAP = { KeyD: 0, KeyF: 1, KeyJ: 2, KeyK: 3 };
+addEventListener('keydown', e => {
+  if (e.code in KEYMAP && !e.repeat) {
+    e.preventDefault();
+    if (state === 'over') { if (performance.now() - overAt > 600) restart(); return; }
+    if (state === 'ready') ov.hidden = true;
+    press(KEYMAP[e.code], null);
+  }
+  if ((e.code === 'Space' || e.code === 'Enter') && state === 'over' && performance.now() - overAt > 600) { e.preventDefault(); restart(); }
+});
+
+function update(dt) {
+  if (state === 'play') {
+    speed = Math.min(6.2, 1.7 + hits * .03);
+    const dy = speed * rowH * dt;
+    rows.forEach(r => { r.y += dy; });
+    const t = target();
+    if (t && t.y >= H) { lose(t.lane, t, true); }
+    rows = rows.filter(r => !(r.hit && r.y > H));
+    let top = rows[rows.length - 1];
+    while (top.y > -rowH * 1.5) { const n = { y: top.y - rowH, lane: pickLane(top.lane), hit: false }; rows.push(n); top = n; }
+  } else if (state === 'fail') {
+    failT -= dt; if (failT <= 0) gameOver();
+  }
+  rows.forEach(r => { if (r.hit) r.hitT = Math.min(1, (r.hitT || 0) + dt * 5); });
+  flash.forEach(f => { f.t -= dt; }); flash = flash.filter(f => f.t > 0);
+}
+function draw(t) {
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0);
+  ctx.fillStyle = '#f6f1e6'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,.08)';
+  for (let i = 1; i < LANES; i++) ctx.fillRect(i * LW - .5, 0, 1, H);
+  for (const r of rows) {
+    if (r.y > H || r.y + rowH < 0) continue;
+    ctx.fillStyle = 'rgba(0,0,0,.05)'; ctx.fillRect(0, r.y + rowH - .5, W, 1);
+    const x = r.lane * LW + 1, y = r.y + 1, w = LW - 2, h = rowH - 2;
+    if (r.hit) {
+      ctx.fillStyle = `rgba(20,20,20,${.16 * (1 - r.hitT * .5)})`; ctx.fillRect(x, y, w, h);
+    } else {
+      const g = ctx.createLinearGradient(0, y, 0, y + h);
+      g.addColorStop(0, '#2a2a2a'); g.addColorStop(.12, '#141414'); g.addColorStop(1, '#0b0b0b');
+      ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(x + 6, y + 6, 3, h - 12);
+      if (r.start) {
+        ctx.fillStyle = '#d8b469'; ctx.font = '900 20px "Noto Serif TC", serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('開始', x + w / 2, y + h / 2);
+      }
+    }
+  }
+  if (fail && (state === 'fail' || state === 'over')) {
+    const on = state === 'over' || Math.floor(failT * 8) % 2 === 0;
+    if (on) {
+      const fy = fail.r ? fail.r.y : null;
+      ctx.fillStyle = 'rgba(214,64,64,.85)';
+      if (fy !== null) ctx.fillRect(fail.lane * LW + 1, fy + 1, LW - 2, rowH - 2);
+    }
+  }
+  for (const f of flash) { ctx.fillStyle = `rgba(214,64,64,${.85 * Math.min(1, f.t * 2)})`; ctx.fillRect(f.lane * LW + 1, f.y + 1, LW - 2, rowH - 2); }
+  if (state !== 'ready') {
+    ctx.font = '700 64px "Cormorant Garamond", Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(246,241,230,.85)'; ctx.strokeText(hits, W / 2, 18);
+    ctx.fillStyle = '#c23a3a'; ctx.fillText(hits, W / 2, 18);
+  }
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
+  update(dt); draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+reset();
+requestAnimationFrame(frame);
+})();
+</script>

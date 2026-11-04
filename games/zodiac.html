@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>生肖翻牌</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+/* Layout: an indigo lacquer table; the cards are vermilion seal-backed slips that turn to show an ink-brushed zodiac sign */
+:root{
+  --lacquer:#171b36;
+  --lacquer-hi:#232850;
+  --edge:#343a6b;
+  --seal:#c4372b;
+  --seal-dark:#8f2219;
+  --gold:#e6c26e;
+  --paper:#f3eee2;
+  --ink:#16161a;
+  --text:#ecebf6;
+  --muted:#9ea3c9;
+  --serif:"Noto Serif TC","Songti TC",serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--lacquer)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:radial-gradient(110% 70% at 50% 30%,var(--lacquer-hi),var(--lacquer) 70%);
+  color:var(--text);font-family:var(--body);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-family:var(--serif);font-weight:900;font-size:1.15rem;letter-spacing:.14em;white-space:nowrap}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.14em}
+.stat b{font-family:var(--serif);font-weight:900;font-size:1.05rem;font-variant-numeric:tabular-nums}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--edge);background:transparent;color:var(--text);cursor:pointer;font-size:.9rem;display:grid;place-items:center;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.timebar{width:100%;max-width:520px;height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.timebar i{display:block;height:100%;width:100%;background:var(--gold);transform-origin:left;transition:background .3s}
+.timebar.low i{background:var(--seal)}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;display:grid;place-items:center}
+.board{display:grid;gap:8px;justify-content:center}
+.card{position:relative;width:var(--w);aspect-ratio:3/4;padding:0;border:0;background:none;cursor:pointer;perspective:700px}
+.inner{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .32s ease}
+.card.up .inner{transform:rotateY(180deg)}
+.back,.front{position:absolute;inset:0;border-radius:8px;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.back{background:
+  repeating-linear-gradient(45deg,transparent 0 7px,rgba(230,194,110,.28) 7px 8px),
+  repeating-linear-gradient(-45deg,transparent 0 7px,rgba(230,194,110,.28) 7px 8px),
+  var(--seal);
+  box-shadow:inset 0 0 0 3px var(--seal-dark),inset 0 0 0 5px var(--gold),0 4px 10px rgba(0,0,0,.35)}
+.back::after{content:"";position:absolute;left:50%;top:50%;width:34%;aspect-ratio:1;transform:translate(-50%,-50%) rotate(45deg);border:2px solid var(--gold);background:var(--seal)}
+.front{transform:rotateY(180deg);background:var(--paper);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(0,0,0,.08),0 4px 10px rgba(0,0,0,.35);display:grid;place-items:center}
+.front b{font-family:var(--serif);font-weight:900;font-size:calc(var(--w) * .52);line-height:1}
+.front small{position:absolute;left:8%;top:6%;font-family:var(--serif);font-weight:700;font-size:calc(var(--w) * .15);color:var(--seal);writing-mode:vertical-rl}
+.front .stamp{position:absolute;right:7%;bottom:6%;width:30%;aspect-ratio:1;border:2px solid var(--seal);border-radius:3px;color:var(--seal);font-family:var(--serif);font-weight:900;font-size:calc(var(--w) * .17);display:grid;place-items:center;transform:rotate(-8deg) scale(1.6);opacity:0;transition:opacity .2s,transform .25s}
+.card.done .stamp{opacity:.9;transform:rotate(-8deg) scale(1)}
+.card.done .front b{opacity:.75}
+.card.wrong .front{animation:shake .3s}
+@keyframes shake{25%{transform:rotateY(180deg) translateX(-4px)}75%{transform:rotateY(180deg) translateX(4px)}}
+.card:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px}
+.pop{position:absolute;left:0;right:0;top:40%;text-align:center;font-family:var(--serif);font-weight:900;font-size:1.5rem;color:var(--gold);text-shadow:0 2px 12px rgba(0,0,0,.7);opacity:0;pointer-events:none;z-index:4}
+.pop.show{animation:pop 1.2s ease-out}
+@keyframes pop{0%{opacity:0;transform:scale(.9)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);z-index:5;padding:20px 18px 16px;border-radius:12px;background:rgba(14,17,38,.94);border:1px solid var(--edge);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-family:var(--serif);font-weight:900;font-size:1.5rem;letter-spacing:.1em}
+.overlay p{margin:0;font-size:.92rem;line-height:1.75;color:#cfd2ec;max-width:40ch}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:2px}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--seal);color:#fff;font:900 1rem var(--body);padding:10px 22px;cursor:pointer;letter-spacing:.12em;box-shadow:inset 0 0 0 2px var(--gold)}
+.keys{font-size:.78rem;color:var(--muted)}
+.rec{color:var(--gold);font-weight:900}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.inner{transition:none}.card.wrong .front{animation:none}}
+</style>
+
+<header class="hud">
+  <div class="brand">生肖翻牌</div>
+  <div class="stat"><span>第幾局</span><b id="round">1</b></div>
+  <div class="stat"><span>連對</span><b id="combo">0</b></div>
+  <div class="stat"><span>分數</span><b id="score">0</b></div>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+<div class="timebar" id="timebar"><i id="time"></i></div>
+<main class="stage" id="stage">
+  <div class="board" id="board"></div>
+  <div class="pop" id="pop" aria-live="polite"></div>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">生肖翻牌</h1>
+    <p id="ov-text">每局開始會先亮牌一秒，記住十二生肖的位置。翻開兩張一樣的就配成一對，連續配對分數加倍，配對也會加時間。牌越來越多，時間越來越緊。</p>
+    <div class="row"><button class="btn" id="ov-btn">開局</button><span class="keys" id="ov-keys">最高紀錄 0 分</span></div>
+  </section>
+</main>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), board = $('board'), pop = $('pop'), timeEl = $('time'), timebar = $('timebar');
+const roundEl = $('round'), comboEl = $('combo'), scoreEl = $('score');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn'), ovKeys = $('ov-keys'), muteBtn = $('mute');
+
+let actx = null, muted = !!store.get('zodiac.muted', false);
+function tone(f, d = .12, type = 'sine', v = .06) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) {}
+}
+// pentatonic notes so every match chimes in tune
+const PENTA = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.7, 1318.5];
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('zodiac.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) tone(660); });
+function showPop(t) { pop.textContent = t; pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show'); }
+
+const ANIMALS = [['鼠','子'],['牛','丑'],['虎','寅'],['兔','卯'],['龍','辰'],['蛇','巳'],['馬','午'],['羊','未'],['猴','申'],['雞','酉'],['狗','戌'],['豬','亥']];
+const GRID = { 6: [3, 4], 8: [4, 4], 10: [4, 5], 12: [4, 6] };
+let round = 0, cards = [], open = [], lock = true, score = 0, combo = 0, timeLeft = 0, timeMax = 1, state = 'ready', mismatchT = 0, overAt = 0;
+let best = store.get('zodiac.best', 0);
+ovKeys.textContent = `最高紀錄 ${best} 分`;
+
+const pairsFor = r => [6, 8, 10, 12][Math.min(r, 3)];
+const timeFor = r => r < 4 ? pairsFor(r) * 6 + 10 : Math.max(32, 82 - (r - 3) * 6);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function hud() { roundEl.textContent = round + 1; comboEl.textContent = combo; scoreEl.textContent = score; }
+function layout() {
+  const pairs = cards.length / 2 || 6, [cols, rows] = GRID[pairs] || [4, 6];
+  const r = stage.getBoundingClientRect(), gap = 8;
+  const w = Math.max(40, Math.min((r.width - gap * (cols - 1)) / cols, ((r.height - gap * (rows - 1)) / rows) * .75, 120));
+  board.style.gridTemplateColumns = `repeat(${cols}, ${Math.floor(w)}px)`;
+  board.style.setProperty('--w', Math.floor(w) + 'px');
+}
+if ('ResizeObserver' in window) new ResizeObserver(layout).observe(stage); else addEventListener('resize', layout);
+
+function deal() {
+  const pairs = pairsFor(round);
+  const pick = shuffle(ANIMALS.slice()).slice(0, pairs);
+  const deck = shuffle([...pick, ...pick]);
+  board.innerHTML = '';
+  cards = deck.map(([a, b], i) => {
+    const el = document.createElement('button');
+    el.className = 'card up';
+    el.setAttribute('aria-label', '翻開這張牌');
+    el.innerHTML = `<span class="inner"><span class="back"></span><span class="front"><small>${b}</small><b>${a}</b><span class="stamp">合</span></span></span>`;
+    el.addEventListener('click', () => flip(i));
+    board.appendChild(el);
+    return { k: a, el, up: true, done: false };
+  });
+  open = []; lock = true; timeMax = timeLeft = timeFor(round);
+  layout(); hud();
+  showPop(round === 0 ? '記住位置' : `第 ${round + 1} 局`);
+  setTimeout(() => {
+    cards.forEach(c => { c.up = false; c.el.classList.remove('up'); });
+    setTimeout(() => { lock = false; state = 'play'; }, 320);
+  }, 1100 + pairs * 60);
+}
+function hideOpen() {
+  open.forEach(c => { if (!c.done) { c.up = false; c.el.classList.remove('up', 'wrong'); } });
+  open = []; mismatchT = 0;
+}
+function flip(i) {
+  if (lock || state !== 'play') return;
+  const c = cards[i];
+  if (c.up || c.done) return;
+  if (open.length === 2) hideOpen();
+  c.up = true; c.el.classList.add('up'); open.push(c);
+  tone(330, .05, 'triangle', .03);
+  if (open.length < 2) return;
+  const [a, b] = open;
+  if (a.k === b.k) {
+    a.done = b.done = true; a.el.classList.add('done'); b.el.classList.add('done');
+    combo++; score += 100 * combo; timeLeft = Math.min(timeMax, timeLeft + 2);
+    tone(PENTA[Math.min(combo - 1, PENTA.length - 1)], .3);
+    if (combo >= 3) showPop(`連對 ${combo}！`);
+    open = []; hud();
+    if (cards.every(x => x.done)) clearRound();
+  } else {
+    combo = 0; hud();
+    a.el.classList.add('wrong'); b.el.classList.add('wrong');
+    tone(180, .12, 'triangle', .04);
+    mismatchT = .75;
+  }
+}
+function clearRound() {
+  state = 'between'; lock = true;
+  const bonus = Math.ceil(timeLeft) * 10;
+  score += bonus; hud();
+  showPop(`過關 +${bonus}`);
+  [0, 2, 4, 7].forEach((n, i) => setTimeout(() => tone(PENTA[n], .25), i * 120));
+  setTimeout(() => { round++; deal(); }, 1300);
+}
+function gameOver() {
+  state = 'over'; lock = true; overAt = performance.now();
+  cards.forEach(c => { c.el.classList.add('up'); });
+  const rec = score > best;
+  if (rec) { best = score; store.set('zodiac.best', best); }
+  tone(220, .5, 'triangle', .05);
+  ovTitle.textContent = '時間到';
+  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `打到第 ${round + 1} 局，得到 ${score} 分。`;
+  ovBtn.textContent = '再翻一輪'; ovKeys.textContent = `最高紀錄 ${best} 分`;
+  setTimeout(() => { if (state === 'over') ov.hidden = false; }, 1200);
+}
+function start() {
+  if (state === 'play' || state === 'between') return;
+  ov.hidden = true; ovBtn.blur();
+  round = 0; score = 0; combo = 0; state = 'between';
+  deal();
+}
+function pause() {
+  if (state !== 'play') return;
+  state = 'paused';
+  ovTitle.textContent = '暫停中'; ovText.textContent = '計時停住了，回來後按繼續。';
+  ovBtn.textContent = '繼續'; ovKeys.textContent = '';
+  ov.hidden = false;
+}
+
+ovBtn.addEventListener('click', () => {
+  if (state === 'paused') { state = 'play'; ov.hidden = true; return; }
+  if (state === 'over' && performance.now() - overAt < 800) return;
+  start();
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+addEventListener('keydown', e => {
+  if ((e.code === 'Space' || e.code === 'Enter') && !ov.hidden && !(e.target.closest && e.target.closest('button'))) { e.preventDefault(); ovBtn.click(); }
+});
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), .1); lastT = now;
+  if (state === 'play') {
+    timeLeft -= dt;
+    if (mismatchT > 0) { mismatchT -= dt; if (mismatchT <= 0) hideOpen(); }
+    if (timeLeft <= 0) { timeLeft = 0; gameOver(); }
+  }
+  timeEl.style.transform = `scaleX(${Math.max(0, timeLeft / timeMax)})`;
+  timebar.classList.toggle('low', timeLeft < 8 && state === 'play');
+  requestAnimationFrame(frame);
+}
+
+// opening table: a face-up sample spread so the first screen shows the signs
+cards = shuffle(ANIMALS.slice()).slice(0, 6).flatMap(x => [x, x]).map(([a, b]) => {
+  const el = document.createElement('div');
+  el.className = 'card up';
+  el.innerHTML = `<span class="inner"><span class="back"></span><span class="front"><small>${b}</small><b>${a}</b><span class="stamp">合</span></span></span>`;
+  board.appendChild(el);
+  return { el };
+});
+shuffle(cards).forEach(c => board.appendChild(c.el));
+layout(); hud();
+timeEl.style.transform = 'scaleX(1)';
+requestAnimationFrame(frame);
+})();
+</script>

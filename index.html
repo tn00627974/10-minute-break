@@ -1,0 +1,309 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>下課十分鐘</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: a toy-shop pegboard wall. A yellow shop sign hangs at the top; game cards hang below it on hooks, one row per category. Picking a card slides a player layer over the whole board. */
+:root{
+  --board:#e2e5ea;
+  --hole:rgba(36,46,74,.2);
+  --card:#fcfcfa;
+  --ink:#1b2031;
+  --muted:#596178;
+  --line:#c9ced8;
+  --accent:#2c54d1;
+  --on-accent:#ffffff;
+  --sign:#ffd23f;
+  --sign-ink:#1b2031;
+  --peg:#8b919f;
+  --stage:#12141a;
+  --shadow:rgba(24,32,56,.12);
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --num:"Fredoka","Chiron GoRound TC",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --board:#1c2029;--hole:rgba(0,0,0,.5);--card:#272c38;--ink:#eceff7;--muted:#a3aabd;--line:#394052;
+    --accent:#88a3ff;--on-accent:#111a3a;--sign:#f2c52e;--sign-ink:#1b2031;--peg:#5d6474;--stage:#0d0f14;--shadow:rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --board:#1c2029;--hole:rgba(0,0,0,.5);--card:#272c38;--ink:#eceff7;--muted:#a3aabd;--line:#394052;
+  --accent:#88a3ff;--on-accent:#111a3a;--sign:#f2c52e;--sign-ink:#1b2031;--peg:#5d6474;--stage:#0d0f14;--shadow:rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0;color:var(--ink);font-family:var(--body);
+  background-color:var(--board);
+  background-image:radial-gradient(circle,var(--hole) 2.4px,transparent 3px);
+  background-size:26px 26px;background-position:13px 13px;
+  -webkit-tap-highlight-color:transparent;
+}
+body.playing{overflow:hidden}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:22px;
+  padding-block:24px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* the shop sign, hung from two pegs */
+.sign{position:relative;margin-top:8px;padding:22px 22px 18px;border-radius:16px;background:var(--sign);color:var(--sign-ink);box-shadow:0 5px 0 rgba(0,0,0,.14);display:flex;flex-direction:column;gap:6px}
+.sign::before,.sign::after{content:"";position:absolute;top:-8px;width:14px;height:14px;border-radius:50%;background:var(--peg);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.sign::before{left:30px}.sign::after{right:30px}
+.sign h1{margin:0;font-family:var(--display);font-weight:900;font-size:clamp(2rem,7vw,3rem);line-height:1.1;letter-spacing:.06em;text-wrap:balance}
+.sign p{margin:0;font-size:.95rem;line-height:1.65;max-width:44ch}
+.sign .bell{font-family:var(--display);font-weight:700;font-size:.85rem;letter-spacing:.08em}
+
+.tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.chip{appearance:none;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 14px;font:700 .9rem var(--body);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip b{font-family:var(--num);font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.chip[aria-pressed="true"] b{color:var(--sign)}
+.random{appearance:none;border:0;border-radius:999px;background:var(--accent);color:var(--on-accent);padding:9px 18px;font:700 .9rem var(--body);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.random svg{width:16px;height:16px}
+
+#shelves{display:flex;flex-direction:column;gap:30px}
+.shelf{display:flex;flex-direction:column;gap:14px}
+.shelf h2{margin:0;display:flex;align-items:baseline;gap:10px;font-family:var(--display);font-weight:900;font-size:1.35rem;letter-spacing:.06em}
+.shelf h2 span{font-family:var(--body);font-weight:500;font-size:.85rem;color:var(--muted);letter-spacing:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:26px 14px;padding-top:6px}
+
+/* each game is a hang-tab card with a euro-slot hole at the top */
+.card{position:relative;display:flex;flex-direction:column;gap:7px;padding:24px 10px 12px;border-radius:12px;background:var(--card);color:inherit;text-decoration:none;box-shadow:0 2px 0 var(--shadow),0 10px 20px var(--shadow);transition:transform .18s ease}
+.card::before{content:"";position:absolute;top:8px;left:50%;width:32px;height:9px;margin-left:-16px;border-radius:5px;background:var(--board);box-shadow:inset 0 2px 2px rgba(0,0,0,.22)}
+.card::after{content:"";position:absolute;top:-6px;left:50%;width:6px;height:20px;margin-left:-3px;border-radius:3px;background:var(--peg)}
+.card:hover{transform:translateY(-3px) rotate(-.6deg)}
+.card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.thumb{display:block;aspect-ratio:3/4;max-width:100%;border-radius:8px;overflow:hidden;background:var(--line)}
+.thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.name{font-family:var(--display);font-weight:700;font-size:1.05rem;line-height:1.3}
+.desc{font-size:.8rem;line-height:1.5;color:var(--muted);min-height:3em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.best{margin-top:auto;padding-top:7px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:.74rem;color:var(--muted)}
+.best b{font-family:var(--num);font-weight:600;font-size:.95rem;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.best b.none{font-family:var(--body);font-weight:500;font-size:.78rem;color:var(--muted)}
+.last{position:absolute;top:32px;left:16px;z-index:1;padding:2px 9px;border-radius:999px;background:var(--accent);color:var(--on-accent);font-size:.7rem;font-weight:700;letter-spacing:.06em}
+.foot{font-size:.8rem;color:var(--muted);line-height:1.6}
+
+/* player layer */
+.player{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;background:var(--stage);padding-bottom:env(safe-area-inset-bottom,0px)}
+.pbar{display:flex;align-items:center;gap:10px;background:var(--sign);color:var(--sign-ink);
+  padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:8px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.pbar h2{flex:1;min-width:0;margin:0;font-family:var(--display);font-weight:900;font-size:1.05rem;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.pbtn{appearance:none;border:1.5px solid var(--sign-ink);background:transparent;color:var(--sign-ink);border-radius:999px;padding:6px 12px;font:700 .85rem var(--body);cursor:pointer;white-space:nowrap}
+.pbtn.solid{background:var(--sign-ink);color:var(--sign)}
+.screen{position:relative;flex:1;min-height:0}
+.screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:var(--stage)}
+.status{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:12px;color:#c9cfdd;font-size:.95rem;text-align:center;padding:24px}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.pbar button:focus-visible{outline-color:var(--sign-ink)}
+@media (max-width:420px){.pbtn.hide-sm{display:none}}
+@media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
+</style>
+
+<div class="wrap" id="lobby">
+  <header class="sign">
+    <span class="bell">噹——噹——噹——</span>
+    <h1>下課十分鐘</h1>
+    <p>多款小遊戲掛在這面牆上，挑一款就開玩，玩到上課鐘響。手機用手指，電腦用鍵盤或滑鼠。</p>
+  </header>
+
+  <div class="tools">
+    <div class="chips" id="chips" role="group" aria-label="依類型篩選"></div>
+    <button class="random" id="random" type="button">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="5" cy="5" r="1.3" fill="currentColor"/><circle cx="11" cy="11" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/></svg>
+      隨便玩一款
+    </button>
+  </div>
+
+  <div id="shelves"></div>
+  <p class="foot">最高紀錄只存在這台裝置的瀏覽器裡。在遊戲裡按右上角的「大廳」就能回來換一款。</p>
+</div>
+
+<section class="player" id="player" hidden aria-label="遊戲畫面">
+  <div class="pbar">
+    <button class="pbtn solid" id="back" type="button">← 大廳</button>
+    <h2 id="p-title"></h2>
+    <button class="pbtn hide-sm" id="shuffle" type="button">換一款</button>
+    <button class="pbtn" id="reload" type="button">重玩</button>
+  </div>
+  <div class="screen" id="screen">
+    <div class="status" id="status"></div>
+  </div>
+</section>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+
+/* ---------- game registry: one entry per file in games/ ---------- */
+const score = (key, unit) => () => { const v = store.get(key, 0); return v > 0 ? `${v} ${unit}` : null; };
+const GAMES = [
+  { id: 'mahjong2048', title: '麻將 2048', cat: '益智', desc: '滑動合併麻將牌，合出「發財」就是 2048。', best: score('mj2048.best', '分') },
+  { id: 'zodiac',      title: '生肖翻牌',   cat: '益智', desc: '先記住十二生肖的位置，再限時配對。', best: score('zodiac.best', '分') },
+  { id: 'mines',       title: '測量踩地雷', cat: '益智', desc: '三種難度，長按插旗，挖開會露出等高線。', best: () => {
+      const b = store.get('mines.best', {}) || {};
+      for (const [k, n] of [['hard', '高級'], ['mid', '中級'], ['easy', '初級']]) if (b[k] != null) return `${n} ${b[k]} 秒`;
+      return null;
+    } },
+  { id: 'blueprint',   title: '藍圖方塊',   cat: '益智', desc: '排滿一整列就消掉，每消十行升一級。', best: score('blueprint.best', '分') },
+  { id: 'tower',       title: '疊疊塔',     cat: '反應', desc: '點一下放下滑動的樓層，對得越準蓋得越高。', best: score('tower.best', '層') },
+  { id: 'snake',       title: '掌機貪食蛇', cat: '反應', desc: '滑動轉彎，每吃五顆出現限時大餌。', best: score('snake.best', '分') },
+  { id: 'mole',        title: '草皮打地鼠', cat: '反應', desc: '45 秒一局，金色地鼠多給分，炸彈別敲。', best: score('mole.best', '分') },
+  { id: 'piano',       title: '月光鋼琴',   cat: '反應', desc: '只踩黑鍵，每點一下彈出曲子的下一個音。', best: score('piano.best', '個音') },
+  { id: 'boba',        title: '珍珠接接樂', cat: '反應', desc: '拖杯子接珍珠，裝滿一杯換口味，避開辣椒。', best: score('boba.best', '分') },
+  { id: 'bricks',      title: '套色打磚塊', cat: '動作', desc: '孔版印刷風打磚塊，四種道具輪流掉。', best: score('riso.best', '分') },
+  { id: 'stardust',    title: '星塵防線',   cat: '動作', desc: '拖曳移動、自動開火，撐到母艦出現。', best: score('stardust.best', '分') },
+  { id: 'plane',       title: '筆記本紙飛機', cat: '動作', desc: '點一下往上飄，從鉛筆之間的縫鑽過去。', best: score('plane.best', '枝') },
+  { id: 'rooftop',     title: '屋頂貓',     cat: '動作', desc: '黑貓在公寓頂樓間跑酷，空中可以再跳一次。', best: score('roofcat.best', '分') }
+];
+const CATS = [
+  { k: '益智', sub: '慢慢想' },
+  { k: '反應', sub: '看準時機' },
+  { k: '動作', sub: '手要快' }
+];
+const byId = Object.fromEntries(GAMES.map(g => [g.id, g]));
+
+/* ---------- lobby ---------- */
+const chipsEl = $('chips'), shelvesEl = $('shelves'), lobby = $('lobby');
+let cat = store.get('lobby.cat', 'all');
+if (cat !== 'all' && !CATS.some(c => c.k === cat)) cat = 'all';
+
+function renderChips() {
+  const items = [{ k: 'all', label: '全部', n: GAMES.length }, ...CATS.map(c => ({ k: c.k, label: c.k, n: GAMES.filter(g => g.cat === c.k).length }))];
+  chipsEl.innerHTML = '';
+  for (const it of items) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.dataset.cat = it.k;
+    b.setAttribute('aria-pressed', String(cat === it.k));
+    b.innerHTML = `${it.label}<b>${it.n}</b>`;
+    b.addEventListener('click', () => { cat = it.k; store.set('lobby.cat', cat); applyFilter(); });
+    chipsEl.appendChild(b);
+  }
+}
+function renderShelves() {
+  shelvesEl.innerHTML = '';
+  for (const c of CATS) {
+    const list = GAMES.filter(g => g.cat === c.k);
+    const sec = document.createElement('section');
+    sec.className = 'shelf'; sec.dataset.cat = c.k;
+    sec.innerHTML = `<h2>${c.k}<span>${list.length} 款・${c.sub}</span></h2><div class="grid"></div>`;
+    const grid = sec.querySelector('.grid');
+    for (const g of list) {
+      const a = document.createElement('a');
+      a.className = 'card'; a.href = '#' + g.id; a.dataset.id = g.id;
+      a.innerHTML = `<span class="thumb"><img src="thumbs/${g.id}.jpg" alt="${g.title}的遊戲畫面" width="300" height="400" loading="lazy" decoding="async"></span>
+        <span class="name">${g.title}</span><span class="desc">${g.desc}</span>
+        <span class="best"><span>最高紀錄</span><b></b></span><span class="last" hidden>上次玩</span>`;
+      a.addEventListener('click', e => { e.preventDefault(); go(g.id); });
+      grid.appendChild(a);
+    }
+    shelvesEl.appendChild(sec);
+  }
+}
+function applyFilter() {
+  chipsEl.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cat === cat)));
+  shelvesEl.querySelectorAll('.shelf').forEach(s => { s.hidden = cat !== 'all' && s.dataset.cat !== cat; });
+}
+function refreshCards() {
+  const last = store.get('lobby.last', null);
+  shelvesEl.querySelectorAll('.card').forEach(a => {
+    const g = byId[a.dataset.id], v = g.best(), b = a.querySelector('.best b');
+    b.textContent = v || '還沒玩過';
+    b.classList.toggle('none', !v);
+    a.querySelector('.last').hidden = a.dataset.id !== last;
+  });
+}
+
+/* ---------- player: each game runs in its own iframe ---------- */
+const player = $('player'), screenEl = $('screen'), statusEl = $('status'), pTitle = $('p-title');
+let frame = null, current = null, token = 0, loadTimer = 0;
+
+function unmount() {
+  token++; clearTimeout(loadTimer);
+  if (frame) { frame.remove(); frame = null; }   // removing the iframe stops its loops, listeners and audio
+  current = null;
+}
+async function mount(g) {
+  unmount();
+  const my = token;
+  current = g.id;
+  pTitle.textContent = g.title;
+  player.hidden = false; document.body.classList.add('playing'); lobby.inert = true;
+  statusEl.textContent = '載入中…'; statusEl.hidden = false;
+  store.set('lobby.last', g.id);
+
+  const f = document.createElement('iframe');
+  f.title = g.title;
+  f.setAttribute('allow', 'autoplay; fullscreen');
+  f.addEventListener('load', () => {
+    if (my !== token) return;
+    clearTimeout(loadTimer); statusEl.hidden = true;
+    try { f.contentWindow.focus(); } catch (e) {}
+  });
+  const url = 'games/' + g.id + '.html';
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(res.status);
+    const html = await res.text();
+    if (my !== token) return;
+    f.srcdoc = html;              // same-origin document: shares localStorage with the lobby
+  } catch (e) {
+    if (my !== token) return;
+    f.src = url;                  // fallback, e.g. when opened straight from disk
+  }
+  loadTimer = setTimeout(() => {
+    if (my !== token) return;
+    statusEl.textContent = '這款遊戲載入不了。按「重玩」再試一次，或回大廳換一款。';
+  }, 10000);
+  screenEl.appendChild(f); frame = f;
+}
+function close() {
+  const was = current;
+  unmount();
+  player.hidden = true; document.body.classList.remove('playing'); lobby.inert = false;
+  refreshCards();
+  if (was) { const card = shelvesEl.querySelector(`.card[data-id="${was}"]`); if (card) try { card.focus({ preventScroll: true }); } catch (e) {} }
+}
+
+/* ---------- routing on #id so a game can be linked directly ---------- */
+function route() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  const g = byId[id];
+  if (g) { if (current !== g.id) mount(g); }
+  else if (!player.hidden) close();
+}
+function go(id) {
+  const want = id ? '#' + id : '';
+  if (location.hash !== want) { try { location.hash = id; } catch (e) {} }
+  route();
+}
+function pickRandom() {
+  const last = store.get('lobby.last', null);
+  const pool = GAMES.filter(g => g.id !== current && g.id !== last && (cat === 'all' || g.cat === cat || current));
+  const list = pool.length ? pool : GAMES;
+  return list[Math.floor(Math.random() * list.length)].id;
+}
+
+$('back').addEventListener('click', () => go(''));
+$('reload').addEventListener('click', () => { if (current) mount(byId[current]); });
+$('shuffle').addEventListener('click', () => go(pickRandom()));
+$('random').addEventListener('click', () => go(pickRandom()));
+addEventListener('hashchange', route);
+addEventListener('storage', e => { if (e.key && e.key.endsWith('.best')) refreshCards(); });
+
+renderChips(); renderShelves(); applyFilter(); refreshCards(); route();
+})();
+</script>
+
+</body></html>

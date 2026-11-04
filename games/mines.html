@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>測量踩地雷</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+/* Layout: a survey sheet on an olive field table — grid references run along the edges, digging a square uncovers the contour map beneath */
+:root{
+  --field:#232f26;
+  --field-hi:#2c3a30;
+  --sheet:#ece5cf;
+  --sheet-edge:#b9ae8a;
+  --turf:#b4a877;
+  --turf-hi:#cfc398;
+  --turf-lo:#8f845a;
+  --ink:#2b2a22;
+  --label:#776f52;
+  --pin:#c8362b;
+  --text:#e9ecdf;
+  --muted:#a5b19c;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--field)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:var(--field);color:var(--text);font-family:var(--body);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:560px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.05rem;letter-spacing:.1em;white-space:nowrap}
+.readout{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;background:rgba(0,0,0,.25);font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums}
+.readout span{font-family:var(--body);font-size:.66rem;color:var(--muted);letter-spacing:.1em}
+.icon-btn{height:34px;min-width:34px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.16);background:transparent;color:var(--text);cursor:pointer;font:700 .85rem var(--body);display:inline-grid;place-items:center}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.tools{width:100%;max-width:560px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:flex;border:1px solid rgba(255,255,255,.16);border-radius:8px;overflow:hidden}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);font:700 .82rem var(--body);padding:7px 11px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink)}
+.mode{margin-left:auto;display:flex;align-items:center;gap:8px;appearance:none;border:1px solid rgba(255,255,255,.16);border-radius:8px;background:transparent;color:var(--text);font:700 .82rem var(--body);padding:7px 12px;cursor:pointer}
+.mode i{width:12px;height:14px;position:relative}
+.mode[aria-pressed="true"]{background:var(--pin);border-color:var(--pin)}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:560px;display:grid;place-items:center}
+.sheet{padding:8px 10px 10px 6px;background:var(--sheet);border-radius:4px;box-shadow:0 0 0 1px var(--sheet-edge),0 16px 40px rgba(0,0,0,.45)}
+.map{display:grid;grid-template-columns:18px repeat(var(--cols),var(--cs));grid-auto-rows:var(--cs);
+  background:
+    repeating-radial-gradient(circle at 28% 34%,transparent 0 17px,rgba(122,98,52,.2) 17px 18px),
+    repeating-radial-gradient(circle at 76% 72%,transparent 0 21px,rgba(122,98,52,.16) 21px 22px),
+    var(--sheet);
+  background-origin:content-box}
+.map .lab{display:grid;place-items:center;font-family:var(--mono);font-size:.62rem;font-weight:700;color:var(--label);background:var(--sheet)}
+.map .corner{background:var(--sheet)}
+.map .colhead{grid-auto-rows:18px}
+.cell{appearance:none;border:0;padding:0;margin:0;width:var(--cs);height:var(--cs);display:grid;place-items:center;cursor:pointer;
+  background:var(--turf);box-shadow:inset 1px 1px 0 var(--turf-hi),inset -1px -1px 0 var(--turf-lo);
+  font-family:var(--mono);font-weight:800;font-size:calc(var(--cs) * .56);line-height:1;color:var(--ink);position:relative;touch-action:manipulation;-webkit-touch-callout:none}
+.cell.open{background:transparent;box-shadow:inset 0 0 0 .5px rgba(119,111,82,.25);cursor:default}
+.cell[data-n="1"]{color:#2463a6}.cell[data-n="2"]{color:#2f7d32}.cell[data-n="3"]{color:#c0392b}.cell[data-n="4"]{color:#1d2f6f}
+.cell[data-n="5"]{color:#7b2d26}.cell[data-n="6"]{color:#1d7a7a}.cell[data-n="7"]{color:#222}.cell[data-n="8"]{color:#666}
+.cell.flag::before{content:"";position:absolute;left:44%;top:18%;width:2px;height:64%;background:var(--ink)}
+.cell.flag::after{content:"";position:absolute;left:calc(44% + 2px);top:18%;width:34%;height:30%;background:var(--pin);clip-path:polygon(0 0,100% 50%,0 100%)}
+.cell.mine::after{content:"";width:46%;height:46%;border-radius:50%;background:radial-gradient(circle at 35% 35%,#6a6a6a,#111 62%);box-shadow:0 0 0 2px rgba(0,0,0,.15)}
+.cell.boom{background:var(--pin)!important}
+.cell.wrong{background:transparent}
+.cell.wrong::before{content:"×";color:var(--pin);font-size:calc(var(--cs) * .8)}
+.cell:focus-visible{outline:2px solid var(--pin);outline-offset:-2px}
+.hint{width:100%;max-width:560px;font-size:.78rem;color:var(--muted);text-align:center}
+.overlay{position:absolute;left:16px;right:16px;bottom:12px;z-index:5;padding:16px 18px;border-radius:10px;background:rgba(30,40,33,.95);border:1px solid rgba(236,229,207,.3);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.overlay div{flex:1;min-width:180px}
+.overlay h1{margin:0 0 2px;font-size:1.2rem;font-weight:900}
+.overlay p{margin:0;font-size:.88rem;color:#d4dccd;line-height:1.6}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--sheet);color:var(--ink);font:900 .95rem var(--body);padding:10px 18px;cursor:pointer}
+.rec{color:#f0c86a;font-weight:900}
+button:focus-visible{outline:2px solid #f0c86a;outline-offset:2px}
+</style>
+
+<header class="hud">
+  <div class="brand">測量踩地雷</div>
+  <div class="readout"><span>雷</span><b id="left">10</b></div>
+  <div class="readout"><span>時間</span><b id="time">000</b></div>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+<div class="tools">
+  <div class="seg" role="group" aria-label="難度">
+    <button data-lv="easy" aria-pressed="true">初級</button>
+    <button data-lv="mid" aria-pressed="false">中級</button>
+    <button data-lv="hard" aria-pressed="false">高級</button>
+  </div>
+  <button class="icon-btn" id="new">新圖</button>
+  <button class="mode" id="mode" aria-pressed="false">插旗模式</button>
+</div>
+<main class="stage" id="stage">
+  <div class="sheet"><div class="map" id="map"></div></div>
+  <section class="overlay" id="overlay" hidden>
+    <div><h1 id="ov-title"></h1><p id="ov-text"></p></div>
+    <button class="btn" id="ov-btn">再測一張</button>
+  </section>
+</main>
+<p class="hint">點格子挖開，長按或右鍵插旗；點已開的數字會挖開周圍沒插旗的格子。</p>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), map = $('map'), leftEl = $('left'), timeEl = $('time'), modeBtn = $('mode'), newBtn = $('new'), muteBtn = $('mute');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn');
+
+let actx = null, muted = !!store.get('mines.muted', false);
+function tone(f, d = .06, type = 'triangle', v = .04, slide = 0) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) {}
+}
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('mines.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) tone(660); });
+
+const LEVELS = { easy: { c: 9, r: 9, m: 10, name: '初級' }, mid: { c: 10, r: 14, m: 24, name: '中級' }, hard: { c: 12, r: 18, m: 42, name: '高級' } };
+const COLS = 'ABCDEFGHIJKL';
+let lv = store.get('mines.lv', 'easy'); if (!LEVELS[lv]) lv = 'easy';
+let L, grid = [], btns = [], started = false, over = false, t0 = 0, elapsed = 0, opened = 0, flags = 0, flagMode = false;
+const bests = store.get('mines.best', {});
+
+function neighbors(i) {
+  const x = i % L.c, y = Math.floor(i / L.c), out = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue;
+    const nx = x + dx, ny = y + dy;
+    if (nx >= 0 && ny >= 0 && nx < L.c && ny < L.r) out.push(ny * L.c + nx);
+  }
+  return out;
+}
+function fit() {
+  if (!L) return;
+  const r = stage.getBoundingClientRect();
+  const cs = Math.floor(Math.max(20, Math.min((r.width - 40) / L.c, (r.height - 44) / L.r, 46)));
+  map.style.setProperty('--cs', cs + 'px');
+}
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+
+function newGame() {
+  L = LEVELS[lv];
+  grid = Array.from({ length: L.c * L.r }, () => ({ mine: false, n: 0, open: false, flag: false }));
+  started = false; over = false; elapsed = 0; opened = 0; flags = 0;
+  ov.hidden = true;
+  map.innerHTML = '';
+  map.style.setProperty('--cols', L.c);
+  const corner = document.createElement('div'); corner.className = 'lab corner'; map.appendChild(corner);
+  for (let x = 0; x < L.c; x++) { const d = document.createElement('div'); d.className = 'lab'; d.textContent = COLS[x]; map.appendChild(d); }
+  btns = [];
+  for (let y = 0; y < L.r; y++) {
+    const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = y + 1; map.appendChild(lab);
+    for (let x = 0; x < L.c; x++) {
+      const i = y * L.c + x, b = document.createElement('button');
+      b.className = 'cell'; b.dataset.i = i; b.setAttribute('aria-label', COLS[x] + (y + 1));
+      map.appendChild(b); btns.push(b);
+    }
+  }
+  map.style.gridTemplateRows = `18px repeat(${L.r}, var(--cs))`;
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lv === lv)));
+  fit(); hud();
+}
+function plant(safe) {
+  const ban = new Set([safe, ...neighbors(safe)]);
+  const pool = [];
+  for (let i = 0; i < grid.length; i++) if (!ban.has(i)) pool.push(i);
+  for (let k = 0; k < L.m; k++) { const j = k + Math.floor(Math.random() * (pool.length - k)); [pool[k], pool[j]] = [pool[j], pool[k]]; grid[pool[k]].mine = true; }
+  grid.forEach((c, i) => { c.n = neighbors(i).filter(j => grid[j].mine).length; });
+}
+function hud() {
+  leftEl.textContent = L.m - flags;
+  timeEl.textContent = String(Math.min(999, Math.floor(elapsed))).padStart(3, '0');
+}
+function paint(i) {
+  const c = grid[i], b = btns[i];
+  b.classList.toggle('open', c.open);
+  b.classList.toggle('flag', c.flag && !c.open);
+  if (c.open && !c.mine && c.n) { b.dataset.n = c.n; b.textContent = c.n; }
+}
+function reveal(i) {
+  const c = grid[i];
+  if (over || c.open || c.flag) return;
+  if (!started) { plant(i); started = true; t0 = performance.now(); }
+  if (c.mine) { lose(i); return; }
+  const stack = [i]; let count = 0;
+  while (stack.length) {
+    const j = stack.pop(), d = grid[j];
+    if (d.open || d.flag) continue;
+    d.open = true; opened++; count++; paint(j);
+    if (d.n === 0) for (const k of neighbors(j)) if (!grid[k].open) stack.push(k);
+  }
+  tone(count > 6 ? 440 : 620, count > 6 ? .12 : .05, 'triangle', .04, count > 6 ? 1.6 : 0);
+  if (opened === grid.length - L.m) win();
+}
+function chord(i) {
+  const c = grid[i];
+  if (!c.open || !c.n) return;
+  const nb = neighbors(i);
+  if (nb.filter(j => grid[j].flag).length !== c.n) return;
+  for (const j of nb) if (!grid[j].flag && !grid[j].open) { reveal(j); if (over) return; }
+}
+function toggleFlag(i) {
+  const c = grid[i];
+  if (over || c.open) return;
+  c.flag = !c.flag; flags += c.flag ? 1 : -1;
+  paint(i); hud(); tone(c.flag ? 900 : 500, .05, 'square', .025);
+}
+function finish() { over = true; elapsed = (performance.now() - t0) / 1000; hud(); }
+function lose(i) {
+  finish();
+  grid.forEach((c, j) => {
+    if (c.mine && !c.flag) btns[j].classList.add('mine', 'open');
+    if (!c.mine && c.flag) btns[j].classList.add('wrong');
+  });
+  btns[i].classList.add('boom');
+  tone(90, .6, 'sawtooth', .07, .4);
+  const x = i % L.c, y = Math.floor(i / L.c);
+  ovTitle.textContent = `${COLS[x]}${y + 1} 有雷`;
+  ovText.textContent = `${L.name}地圖，挖開了 ${opened} 格，還差 ${grid.length - L.m - opened} 格。`;
+  setTimeout(() => { if (over) ov.hidden = false; }, 700);
+}
+function win() {
+  finish();
+  grid.forEach((c, j) => { if (c.mine && !c.flag) { c.flag = true; paint(j); } });
+  flags = L.m; hud();
+  const t = Math.round(elapsed), prev = bests[lv], rec = prev == null || t < prev;
+  if (rec) { bests[lv] = t; store.set('mines.best', bests); }
+  [523, 659, 784, 1047].forEach((f, k) => setTimeout(() => tone(f, .14), k * 110));
+  ovTitle.textContent = '整張圖測完了';
+  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `${L.name}用了 ${t} 秒，最快 ${bests[lv]} 秒。`;
+  setTimeout(() => { ov.hidden = false; }, 600);
+}
+
+/* ---------- input: tap = dig (or flag in flag mode), long-press / right-click = flag ---------- */
+let press = null, lastLong = 0;
+map.addEventListener('pointerdown', e => {
+  const b = e.target.closest('.cell'); if (!b || over) return;
+  if (e.button === 2) return;
+  const i = +b.dataset.i;
+  press = { i, x: e.clientX, y: e.clientY, long: false, id: e.pointerId };
+  press.timer = setTimeout(() => { if (press && press.i === i) { press.long = true; lastLong = performance.now(); if (!grid[i].open) toggleFlag(i); if (navigator.vibrate) try { navigator.vibrate(15); } catch (_) {} } }, 380);
+});
+map.addEventListener('pointermove', e => {
+  if (press && press.id === e.pointerId && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 12) { clearTimeout(press.timer); press = null; }
+});
+map.addEventListener('pointerup', e => {
+  if (!press || press.id !== e.pointerId) return;
+  clearTimeout(press.timer);
+  const { i, long } = press; press = null;
+  if (long) return;
+  if (grid[i].open) chord(i);
+  else if (flagMode) toggleFlag(i);
+  else reveal(i);
+});
+map.addEventListener('pointercancel', () => { if (press) { clearTimeout(press.timer); press = null; } });
+map.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if (performance.now() - lastLong < 900) return;
+  const b = e.target.closest('.cell'); if (!b) return;
+  const i = +b.dataset.i;
+  if (grid[i].open) chord(i); else toggleFlag(i);
+});
+map.addEventListener('keydown', e => {
+  const b = e.target.closest('.cell'); if (!b) return;
+  const i = +b.dataset.i;
+  if (e.code === 'KeyF') { e.preventDefault(); toggleFlag(i); }
+  if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); grid[i].open ? chord(i) : reveal(i); }
+});
+modeBtn.addEventListener('click', () => { flagMode = !flagMode; modeBtn.setAttribute('aria-pressed', String(flagMode)); modeBtn.textContent = flagMode ? '插旗中' : '插旗模式'; });
+newBtn.addEventListener('click', () => { newGame(); newBtn.blur(); });
+ovBtn.addEventListener('click', newGame);
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => { lv = b.dataset.lv; store.set('mines.lv', lv); newGame(); }));
+
+setInterval(() => { if (started && !over) { elapsed = (performance.now() - t0) / 1000; hud(); } }, 250);
+newGame();
+})();
+</script>

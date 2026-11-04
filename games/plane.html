@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>筆記本紙飛機</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&display=swap">
+<style>
+/* Layout: a school notebook page laid on a pencil-grey desk; the paper plane flies across ruled lines between pencils, all ink in graphite */
+:root{
+  --desk:#3a3d44;
+  --paper:#fbfaf4;
+  --rule:#c7daf0;
+  --margin:#ef9d9d;
+  --graphite:#3c3c3c;
+  --pencil:#f4c23c;
+  --pink:#f19bb0;
+  --text:#f2f1ec;
+  --muted:#b5b8c0;
+  --hand:"LXGW WenKai TC","Klee One","Kaiti TC","STKaiti","Noto Sans TC",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--desk)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:var(--desk);color:var(--text);font-family:var(--hand);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:700;font-size:1.15rem;letter-spacing:.06em;white-space:nowrap}
+.best{font-size:.95rem;color:var(--muted)}
+.best b{color:var(--text);font-size:1.15rem}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid #555962;background:transparent;color:var(--text);cursor:pointer;font-size:.9rem;display:grid;place-items:center;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:4px;overflow:hidden;touch-action:none;cursor:pointer;background:var(--paper);box-shadow:0 1px 0 #fff inset,0 18px 46px rgba(0,0,0,.45)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.score{position:absolute;left:0;right:0;top:16px;text-align:center;font-weight:700;font-size:3rem;line-height:1;color:var(--graphite);pointer-events:none;text-shadow:2px 2px 0 rgba(255,255,255,.8)}
+.overlay{position:absolute;left:18px;right:18px;top:60%;transform:translateY(-50%) rotate(-1.2deg);z-index:5;padding:18px 18px 16px;background:#fff8c9;color:var(--graphite);box-shadow:0 10px 24px rgba(0,0,0,.22);display:flex;flex-direction:column;gap:10px}
+.overlay::before{content:"";position:absolute;left:50%;top:-10px;width:90px;height:22px;transform:translateX(-50%) rotate(2deg);background:rgba(255,255,255,.55);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.overlay h1{margin:0;font-weight:700;font-size:1.6rem}
+.overlay p{margin:0;font-size:1rem;line-height:1.7;max-width:36ch}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:2px solid var(--graphite);border-radius:6px 10px 7px 9px;background:transparent;color:var(--graphite);font:700 1.05rem var(--hand);padding:8px 20px;cursor:pointer}
+.btn:hover{background:rgba(0,0,0,.05)}
+.keys{font-size:.85rem;color:#7a7766}
+.rec{color:#d0464f;font-weight:700}
+button:focus-visible{outline:2px solid #d0464f;outline-offset:2px}
+</style>
+
+<header class="hud">
+  <div class="brand">筆記本紙飛機</div>
+  <div class="best">最高 <b id="best">0</b> 枝</div>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <div class="score" id="score" hidden>0</div>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">筆記本紙飛機</h1>
+    <p id="ov-text">點一下讓紙飛機往上飄，放著不管就會往下掉。從鉛筆之間的縫鑽過去，每過一組算一枝。</p>
+    <div class="row"><button class="btn" id="ov-btn">起飛</button><span class="keys" id="ov-keys">點畫面・空白鍵</span></div>
+  </section>
+</main>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const scoreEl = $('score'), bestEl = $('best'), muteBtn = $('mute');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn');
+
+let actx = null, muted = !!store.get('plane.muted', false);
+function tone(f, d = .08, type = 'triangle', v = .045, slide = 0) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) {}
+}
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('plane.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) tone(660); });
+
+const W = 400, PW = 44, GRAV = 1350, FLAP = -390, SPACING = 230, LINE = 28;
+let H = 640, S = 1, DPR = 1;
+function fit() {
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S;
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+
+const plane = { x: 110, y: 300, vy: 0, rot: 0 };
+const PENCILS = [['#f4c23c', '#d9a21f'], ['#5aa9e6', '#3f86c0'], ['#7ccf8a', '#58ab67'], ['#f28c8c', '#d26868'], ['#b79be8', '#9479c9']];
+const DOODLES = ['star', 'spiral', 'heart', 'cloud', 'sum', 'smile'];
+let pencils = [], doodles = [], trail = [], state = 'ready', score = 0, travel = 0, deadT = 0, overAt = 0;
+let best = store.get('plane.best', 0);
+bestEl.textContent = best;
+
+const gap = () => Math.max(132, 180 - score * 1.6);
+const speed = () => Math.min(250, 150 + score * 3);
+function reset() {
+  plane.y = H * .42; plane.vy = 0; plane.rot = 0;
+  pencils = []; trail = []; score = 0; travel = 0;
+  scoreEl.textContent = '0';
+}
+function spawnPencil(x) {
+  const g = gap(), m = 54;
+  const cy = m + g / 2 + Math.random() * Math.max(10, H - 2 * m - g);
+  pencils.push({ x, cy, g, passed: false, c: PENCILS[Math.floor(Math.random() * PENCILS.length)] });
+}
+for (let i = 0; i < 9; i++) doodles.push({ x: i * 120 + Math.random() * 60, y: 60 + Math.random() * 500, k: DOODLES[i % DOODLES.length], s: .8 + Math.random() * .5 });
+
+function flap() {
+  if (state === 'ready') { start(); }
+  if (state !== 'play') return;
+  plane.vy = FLAP; tone(520, .08, 'triangle', .04, 1.4);
+}
+function start() {
+  if (state === 'play' || state === 'dead') return;
+  reset(); state = 'play'; ov.hidden = true; ovBtn.blur(); scoreEl.hidden = false;
+  spawnPencil(W + 80);
+}
+function crash() {
+  if (state !== 'play') return;
+  state = 'dead'; deadT = .9; tone(220, .4, 'sawtooth', .05, .3);
+}
+function gameOver() {
+  state = 'over'; overAt = performance.now();
+  const rec = score > best;
+  if (rec) { best = score; store.set('plane.best', best); bestEl.textContent = best; }
+  ovTitle.textContent = score === 0 ? '一起飛就撞到了' : `飛過 ${score} 枝鉛筆`;
+  ovText.innerHTML = (rec && score > 0 ? '<span class="rec">新紀錄！</span>' : '') + `最高紀錄是 ${best} 枝。再摺一架試試。`;
+  ovBtn.textContent = '再摺一架';
+  ov.hidden = false;
+}
+
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('button')) return;
+  e.preventDefault();
+  if (state === 'over') { if (performance.now() - overAt > 500) { start(); flap(); } return; }
+  flap();
+});
+ovBtn.addEventListener('click', () => { if (state !== 'play') { start(); flap(); } });
+addEventListener('keydown', e => {
+  if (e.code !== 'Space' && e.code !== 'ArrowUp' && e.code !== 'KeyW' && e.code !== 'Enter') return;
+  if (e.target.closest && e.target.closest('button')) return;
+  e.preventDefault(); if (e.repeat) return;
+  if (state === 'over') { if (performance.now() - overAt > 500) { start(); flap(); } return; }
+  flap();
+});
+
+function circleRect(cx, cy, r, x, y, w, h) {
+  const nx = Math.max(x, Math.min(cx, x + w)), ny = Math.max(y, Math.min(cy, y + h));
+  return (cx - nx) ** 2 + (cy - ny) ** 2 < r * r;
+}
+function update(dt, t) {
+  const v = state === 'play' ? speed() : state === 'ready' ? 90 : 0;
+  travel += v * dt;
+  for (const d of doodles) { d.x -= v * .55 * dt; if (d.x < -60) { d.x += 1080; d.y = 60 + Math.random() * (H - 120); d.k = DOODLES[Math.floor(Math.random() * DOODLES.length)]; } }
+  if (state === 'ready') { plane.y = H * .42 + Math.sin(t * 2.4) * 10; plane.rot = Math.cos(t * 2.4) * .08; return; }
+  if (state === 'play' || state === 'dead') {
+    plane.vy = Math.min(560, plane.vy + GRAV * dt);
+    plane.y += plane.vy * dt;
+    plane.rot = Math.max(-.45, Math.min(state === 'dead' ? 1.3 : .9, plane.vy / 650));
+    if (plane.y < 10) { plane.y = 10; plane.vy = 0; }
+  }
+  if (state === 'dead') { deadT -= dt; if (deadT <= 0 || plane.y > H + 40) gameOver(); return; }
+  if (state !== 'play') return;
+  for (const p of pencils) p.x -= v * dt;
+  for (const p of trail) p.x -= v * dt;
+  trail.push({ x: plane.x - 16, y: plane.y + 2 }); if (trail.length > 26) trail.shift();
+  const last = pencils[pencils.length - 1];
+  if (last && last.x < W + 60 - SPACING) spawnPencil(last.x + SPACING);
+  pencils = pencils.filter(p => p.x > -PW - 20);
+  for (const p of pencils) {
+    if (!p.passed && p.x + PW < plane.x - 10) { p.passed = true; score++; scoreEl.textContent = score; tone(880, .06, 'square', .03); setTimeout(() => tone(1175, .08, 'square', .03), 60); }
+    const top = p.cy - p.g / 2, bot = p.cy + p.g / 2;
+    if (circleRect(plane.x, plane.y, 9, p.x + 4, -50, PW - 8, top + 50 - 6) || circleRect(plane.x, plane.y, 9, p.x + 4, bot + 6, PW - 8, H - bot + 50)) crash();
+  }
+  if (plane.y > H - 8) crash();
+}
+
+/* ---------- draw ---------- */
+function drawPaper() {
+  ctx.fillStyle = '#fbfaf4'; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#c7daf0'; ctx.lineWidth = 1;
+  for (let y = 64; y < H; y += LINE) { ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(W, y + .5); ctx.stroke(); }
+  // a new page every 640 units: red margin pair and the hole punches drift past
+  const off = travel % 640;
+  for (let px = -off; px < W + 640; px += 640) {
+    ctx.strokeStyle = '#ef9d9d';
+    ctx.beginPath(); ctx.moveTo(px + 60, 0); ctx.lineTo(px + 60, H); ctx.moveTo(px + 64, 0); ctx.lineTo(px + 64, H); ctx.stroke();
+    ctx.fillStyle = '#e9e6dc';
+    for (let hy = H * .2; hy < H; hy += H * .3) { ctx.beginPath(); ctx.arc(px + 24, hy, 8, 0, Math.PI * 2); ctx.fill(); }
+  }
+}
+function drawDoodle(d) {
+  ctx.save(); ctx.translate(d.x, d.y); ctx.scale(d.s, d.s);
+  ctx.strokeStyle = 'rgba(60,60,60,.32)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  if (d.k === 'star') { for (let i = 0; i <= 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 4 / 5; i ? ctx.lineTo(Math.cos(a) * 14, Math.sin(a) * 14) : ctx.moveTo(Math.cos(a) * 14, Math.sin(a) * 14); } }
+  else if (d.k === 'spiral') { for (let a = 0; a < 14; a += .3) { const r = a * 1.2; a ? ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.moveTo(0, 0); } }
+  else if (d.k === 'heart') { ctx.moveTo(0, 12); ctx.bezierCurveTo(-18, 0, -10, -14, 0, -4); ctx.bezierCurveTo(10, -14, 18, 0, 0, 12); }
+  else if (d.k === 'cloud') { ctx.moveTo(-18, 6); ctx.quadraticCurveTo(-22, -6, -10, -6); ctx.quadraticCurveTo(-6, -16, 4, -10); ctx.quadraticCurveTo(16, -14, 18, -2); ctx.quadraticCurveTo(24, 6, 14, 6); ctx.closePath(); }
+  else if (d.k === 'sum') { ctx.font = '700 18px "LXGW WenKai TC", cursive'; ctx.fillStyle = 'rgba(60,60,60,.3)'; ctx.fillText('3+4=7', -22, 6); }
+  else { ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.moveTo(-5, -3); ctx.arc(-5, -3, .8, 0, 7); ctx.moveTo(5, -3); ctx.arc(5, -3, .8, 0, 7); ctx.moveTo(-6, 4); ctx.quadraticCurveTo(0, 9, 6, 4); }
+  ctx.stroke(); ctx.restore();
+}
+function drawPencil(x, from, to, dirDown, c) {
+  // body runs from `from` (the page edge) to the tip at `to`
+  const tipLen = 26, gr = 9;
+  const bodyEnd = dirDown ? to - tipLen : to + tipLen;
+  const y0 = Math.min(from, bodyEnd), y1 = Math.max(from, bodyEnd);
+  ctx.fillStyle = c[0]; ctx.fillRect(x, y0, PW, y1 - y0);
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + PW * .36, y0, PW * .28, y1 - y0);
+  ctx.fillStyle = c[1]; ctx.fillRect(x + PW * .72, y0, PW * .28, y1 - y0);
+  const fe = dirDown ? y0 : y1 - 16;
+  ctx.fillStyle = '#c8ccd2'; ctx.fillRect(x - 1, dirDown ? Math.max(fe, -999) : fe, PW + 2, 16);
+  ctx.fillStyle = '#e7a2b4'; if (dirDown && y0 > -14) ctx.fillRect(x, y0 - 14, PW, 14); if (!dirDown && y1 < H + 14) ctx.fillRect(x, y1, PW, 14);
+  ctx.fillStyle = '#efd2a8';
+  ctx.beginPath(); ctx.moveTo(x, bodyEnd); ctx.lineTo(x + PW, bodyEnd); ctx.lineTo(x + PW / 2, to); ctx.closePath(); ctx.fill();
+  const gy = dirDown ? to - gr : to + gr, k = gr / tipLen;
+  ctx.fillStyle = '#4a4a4a';
+  ctx.beginPath(); ctx.moveTo(x + PW / 2 - PW / 2 * k, gy); ctx.lineTo(x + PW / 2 + PW / 2 * k, gy); ctx.lineTo(x + PW / 2, to); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y0, PW - 1, y1 - y0);
+}
+function drawPlane() {
+  ctx.save(); ctx.translate(plane.x, plane.y); ctx.rotate(plane.rot);
+  ctx.lineJoin = 'round'; ctx.strokeStyle = '#3c3c3c'; ctx.lineWidth = 1.6;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-18, -11); ctx.lineTo(-12, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#e6e9ef';
+  ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-12, 0); ctx.lineTo(-16, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-8, 4); ctx.stroke();
+  ctx.restore();
+}
+function draw(t) {
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0);
+  drawPaper();
+  for (const d of doodles) drawDoodle(d);
+  if (trail.length > 1) {
+    ctx.setLineDash([4, 6]); ctx.strokeStyle = 'rgba(60,60,60,.35)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); trail.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); ctx.setLineDash([]);
+  }
+  for (const p of pencils) {
+    drawPencil(p.x, -20, p.cy - p.g / 2, true, p.c);
+    drawPencil(p.x, H + 20, p.cy + p.g / 2, false, p.c);
+  }
+  drawPlane();
+  if (state === 'dead') {
+    ctx.strokeStyle = 'rgba(208,70,79,.8)'; ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + t; ctx.beginPath(); ctx.moveTo(plane.x + Math.cos(a) * 16, plane.y + Math.sin(a) * 16); ctx.lineTo(plane.x + Math.cos(a) * 26, plane.y + Math.sin(a) * 26); ctx.stroke(); }
+  }
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
+  update(dt, now / 1000); draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+reset();
+requestAnimationFrame(frame);
+})();
+</script>

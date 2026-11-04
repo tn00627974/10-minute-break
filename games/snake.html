@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>掌機貪食蛇</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+/* Layout: a grey handheld on a dark desk — a four-tone LCD on top, d-pad and start button below */
+:root{
+  --desk:#1c1d21;
+  --shell:#cbc7bf;
+  --shell-lo:#a29d94;
+  --bezel:#4b4e58;
+  --lcd0:#0f380f;
+  --lcd1:#306230;
+  --lcd2:#8bac0f;
+  --lcd3:#9bbc0f;
+  --pad:#2b2b30;
+  --btn:#9a2a55;
+  --label:#5a5850;
+  --pixel:"Silkscreen","Noto Sans TC",ui-monospace,monospace;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--desk)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:var(--desk);color:var(--shell);font-family:var(--body);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:420px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1rem;letter-spacing:.1em;white-space:nowrap}
+.best{font-family:var(--pixel);font-size:.75rem;color:#9a978f}
+.best b{color:var(--shell);font-weight:700}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid #3a3b42;background:transparent;color:var(--shell);cursor:pointer;font-size:.9rem;display:grid;place-items:center;padding:0}
+.icon-btn.off{color:#77756f;text-decoration:line-through}
+.console{flex:1;min-height:0;width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px;padding:14px 14px 16px;background:var(--shell);border-radius:14px 14px 44px 14px;box-shadow:inset 0 -4px 0 var(--shell-lo),0 18px 50px rgba(0,0,0,.5)}
+.bezel{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;padding:10px 14px 12px;background:var(--bezel);border-radius:8px 8px 26px 8px}
+.bezel .label{display:flex;justify-content:space-between;align-items:center;font-family:var(--pixel);font-size:.56rem;letter-spacing:.16em;color:#aab0bf}
+.led{display:inline-flex;align-items:center;gap:6px}
+.led i{width:7px;height:7px;border-radius:50%;background:#3d1414}
+.led.on i{background:#ff3b3b;box-shadow:0 0 6px #ff3b3b}
+.stage{position:relative;flex:1;min-height:0;background:var(--lcd3);border-radius:3px;overflow:hidden;touch-action:none}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.overlay{position:absolute;inset:12% 8% auto;padding:14px 14px 12px;background:var(--lcd3);border:3px solid var(--lcd0);box-shadow:4px 4px 0 var(--lcd1);color:var(--lcd0);display:flex;flex-direction:column;gap:8px}
+.overlay h1{margin:0;font-weight:900;font-size:1.15rem;letter-spacing:.06em}
+.overlay p{margin:0;font-size:.82rem;line-height:1.6;font-weight:700}
+.overlay .go{font-family:var(--pixel);font-size:.72rem;letter-spacing:.12em;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.controls{display:flex;align-items:center;justify-content:space-between;padding:0 4px}
+.dpad{display:grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,42px)}
+.dpad button{appearance:none;border:0;background:var(--pad);color:#77757e;font-size:.7rem;cursor:pointer;padding:0;touch-action:none}
+.dpad .u{grid-area:1/2;border-radius:6px 6px 0 0}.dpad .l{grid-area:2/1;border-radius:6px 0 0 6px}
+.dpad .r{grid-area:2/3;border-radius:0 6px 6px 0}.dpad .d{grid-area:3/2;border-radius:0 0 6px 6px}
+.dpad .c{grid-area:2/2;background:var(--pad)}
+.dpad button:active{background:#18181b}
+.right{display:flex;flex-direction:column;align-items:center;gap:6px}
+.a{appearance:none;border:0;width:62px;height:62px;border-radius:50%;background:var(--btn);box-shadow:0 4px 0 #6b1b3a;color:#f5d5e1;font:900 .82rem var(--body);cursor:pointer;touch-action:manipulation}
+.a:active{transform:translateY(3px);box-shadow:0 1px 0 #6b1b3a}
+.right span{font-family:var(--pixel);font-size:.58rem;letter-spacing:.14em;color:var(--label)}
+button:focus-visible{outline:2px solid var(--btn);outline-offset:2px}
+@media (max-height:640px){.dpad{grid-template-columns:repeat(3,34px);grid-template-rows:repeat(3,34px)}.a{width:52px;height:52px}}
+@media (prefers-reduced-motion:reduce){.overlay .go{animation:none}}
+</style>
+
+<header class="hud">
+  <div class="brand">掌機貪食蛇</div>
+  <div class="best">BEST <b id="best">0000</b></div>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+
+<div class="console">
+  <div class="bezel">
+    <div class="label"><span class="led" id="led"><i></i>POWER</span><span>LCD 16×20</span></div>
+    <main class="stage" id="stage">
+      <canvas id="cv"></canvas>
+      <section class="overlay" id="overlay">
+        <h1 id="ov-title">貪食蛇</h1>
+        <p id="ov-text">滑動螢幕、按十字鍵或方向鍵轉彎。吃一顆長一節，每吃五顆會出現限時大餌。撞牆或咬到自己就結束。</p>
+        <span class="go" id="ov-go">PRESS START</span>
+      </section>
+    </main>
+  </div>
+  <div class="controls">
+    <div class="dpad" aria-label="方向">
+      <button class="u" data-d="0,-1" aria-label="上">▲</button>
+      <button class="l" data-d="-1,0" aria-label="左">◀</button>
+      <span class="c"></span>
+      <button class="r" data-d="1,0" aria-label="右">▶</button>
+      <button class="d" data-d="0,1" aria-label="下">▼</button>
+    </div>
+    <div class="right">
+      <button class="a" id="start" aria-label="開始或暫停">開始</button>
+      <span>START</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const bestEl = $('best'), led = $('led'), startBtn = $('start'), muteBtn = $('mute');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovGo = $('ov-go');
+
+let actx = null, muted = !!store.get('snake.muted', false);
+function tone(f, d = .06, type = 'square', v = .035, slide = 0) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) {}
+}
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('snake.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) tone(880); });
+
+const C = { l0: '#0f380f', l1: '#306230', l2: '#8bac0f', l3: '#9bbc0f' };
+const COLS = 16, ROWS = 20, BAR = 18;
+let DPR = 1, cw = 300, ch = 400, cell = 16, ox = 0, oy = 0;
+function fit() {
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  cw = r.width; ch = r.height;
+  cell = Math.floor(Math.min(cw / COLS, (ch - BAR) / ROWS));
+  ox = Math.floor((cw - cell * COLS) / 2); oy = BAR + Math.floor((ch - BAR - cell * ROWS) / 2);
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+
+let snake = [], dir = { x: 1, y: 0 }, queue = [], food = null, bonus = null, eaten = 0, score = 0;
+let state = 'ready', acc = 0, dieT = 0;
+let best = store.get('snake.best', 0);
+const pad4 = n => String(n).padStart(4, '0');
+bestEl.textContent = pad4(best);
+
+function reset() {
+  const y = Math.floor(ROWS / 2);
+  snake = [{ x: 6, y }, { x: 5, y }, { x: 4, y }];
+  dir = { x: 1, y: 0 }; queue = []; eaten = 0; score = 0; bonus = null; acc = 0;
+  placeFood();
+}
+function freeCells() {
+  const occ = new Set(snake.map(s => s.x + ',' + s.y));
+  if (food) occ.add(food.x + ',' + food.y);
+  if (bonus) occ.add(bonus.x + ',' + bonus.y);
+  const out = [];
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (!occ.has(x + ',' + y)) out.push({ x, y });
+  return out;
+}
+function placeFood() { food = null; const f = freeCells(); food = f.length ? f[Math.floor(Math.random() * f.length)] : null; }
+const interval = () => Math.max(.06, .15 - snake.length * .0025);
+const level = () => 1 + Math.floor(eaten / 5);
+
+function turn(x, y) {
+  if (state === 'ready' || state === 'over') { start(); }
+  if (state !== 'play') return;
+  const last = queue.length ? queue[queue.length - 1] : dir;
+  if ((x === -last.x && y === -last.y) || (x === last.x && y === last.y)) return;
+  if (queue.length < 3) queue.push({ x, y });
+}
+function step() {
+  if (queue.length) dir = queue.shift();
+  const h = snake[0], nx = h.x + dir.x, ny = h.y + dir.y;
+  if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return die();
+  const eat = food && nx === food.x && ny === food.y;
+  for (let i = 0; i < snake.length - (eat ? 0 : 1); i++) if (snake[i].x === nx && snake[i].y === ny) return die();
+  snake.unshift({ x: nx, y: ny });
+  if (eat) {
+    eaten++; score += 10 * level();
+    tone(660 + (eaten % 5) * 80, .05);
+    if (eaten % 5 === 0) { const f = freeCells(); if (f.length) bonus = { ...f[Math.floor(Math.random() * f.length)], t: 6 }; tone(990, .12, 'square', .03, 1.5); }
+    placeFood();
+  } else snake.pop();
+  if (bonus && nx === bonus.x && ny === bonus.y) {
+    score += Math.max(10, Math.ceil(bonus.t * 10)) * level(); bonus = null;
+    [880, 1100, 1320].forEach((f, i) => setTimeout(() => tone(f, .06), i * 60));
+  }
+}
+function die() {
+  state = 'dying'; dieT = 1.1; led.classList.remove('on');
+  tone(300, .5, 'square', .05, .25);
+}
+function gameOver() {
+  state = 'over';
+  const rec = score > best;
+  if (rec) { best = score; store.set('snake.best', best); bestEl.textContent = pad4(best); }
+  ovTitle.textContent = rec ? '新紀錄！' : '遊戲結束';
+  ovText.textContent = `長度 ${snake.length}，得分 ${score}，到第 ${level()} 級。`;
+  ovGo.textContent = 'PRESS START';
+  ov.hidden = false;
+}
+function start() {
+  if (state === 'play' || state === 'dying') return;
+  if (state !== 'paused') reset();
+  state = 'play'; ov.hidden = true; led.classList.add('on');
+  tone(523, .06); setTimeout(() => tone(784, .08), 70);
+}
+function pause() {
+  if (state !== 'play') return;
+  state = 'paused'; ovTitle.textContent = '暫停'; ovText.textContent = `目前 ${score} 分，長度 ${snake.length}。`;
+  ovGo.textContent = 'PRESS START'; ov.hidden = false;
+}
+function startPause() { state === 'play' ? pause() : start(); }
+
+/* ---------- input ---------- */
+let sw = null;
+stage.addEventListener('pointerdown', e => { e.preventDefault(); sw = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false }; });
+stage.addEventListener('pointermove', e => {
+  if (!sw || sw.id !== e.pointerId) return;
+  const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+  if (Math.abs(dx) > Math.abs(dy)) turn(Math.sign(dx), 0); else turn(0, Math.sign(dy));
+  sw.x = e.clientX; sw.y = e.clientY; sw.moved = true;
+});
+stage.addEventListener('pointerup', e => {
+  if (sw && sw.id === e.pointerId && !sw.moved && state !== 'play') start();
+  sw = null;
+});
+stage.addEventListener('pointercancel', () => { sw = null; });
+document.querySelectorAll('.dpad button').forEach(b => b.addEventListener('pointerdown', e => {
+  e.preventDefault(); const [x, y] = b.dataset.d.split(',').map(Number); turn(x, y);
+}));
+startBtn.addEventListener('click', () => { startPause(); startBtn.blur(); });
+addEventListener('keydown', e => {
+  const d = { ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1], ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0] }[e.code];
+  if (d) { e.preventDefault(); turn(d[0], d[1]); return; }
+  if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyP') {
+    if (e.target.closest && e.target.closest('button') && e.code !== 'KeyP') return;
+    e.preventDefault(); if (!e.repeat) startPause();
+  }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+addEventListener('blur', pause);
+
+/* ---------- draw ---------- */
+function px(x, y, col, inset = 1) { ctx.fillStyle = col; ctx.fillRect(ox + x * cell + inset, oy + y * cell + inset, cell - inset * 2, cell - inset * 2); }
+function draw(t) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = C.l3; ctx.fillRect(0, 0, cw, ch);
+  // ghosted pixels, the way an unlit LCD matrix shows through
+  ctx.globalAlpha = .22;
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) px(x, y, C.l2);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = C.l1; ctx.lineWidth = 2; ctx.strokeRect(ox - 1, oy - 1, cell * COLS + 2, cell * ROWS + 2);
+  ctx.fillStyle = C.l0; ctx.font = '700 10px Silkscreen, monospace'; ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left'; ctx.fillText('SCORE ' + pad4(score), ox, BAR / 2);
+  ctx.textAlign = 'right'; ctx.fillText('LV ' + level() + '  LEN ' + snake.length, ox + cell * COLS, BAR / 2);
+
+  if (food) {
+    const cx = ox + food.x * cell + cell / 2, cy = oy + food.y * cell + cell / 2, s = cell * .28;
+    ctx.fillStyle = C.l0;
+    ctx.fillRect(cx - s / 2, cy - s * 1.5, s, s * 3); ctx.fillRect(cx - s * 1.5, cy - s / 2, s * 3, s);
+  }
+  if (bonus && (bonus.t > 2 || Math.floor(t * 8) % 2 === 0)) {
+    px(bonus.x, bonus.y, C.l0, 0);
+    px(bonus.x, bonus.y, C.l2, cell * .28);
+  }
+  const visible = state !== 'dying' || Math.floor(dieT * 8) % 2 === 0;
+  if (visible) {
+    snake.forEach((s, i) => {
+      px(s.x, s.y, i === 0 ? C.l0 : C.l1);
+      if (i === 0) {
+        ctx.fillStyle = C.l3;
+        const e = Math.max(2, Math.floor(cell * .16)), cx = ox + s.x * cell + cell / 2, cy = oy + s.y * cell + cell / 2;
+        const px1 = dir.y ? -cell * .2 : dir.x * cell * .15, py1 = dir.x ? -cell * .2 : dir.y * cell * .15;
+        const px2 = dir.y ? cell * .2 : dir.x * cell * .15, py2 = dir.x ? cell * .2 : dir.y * cell * .15;
+        ctx.fillRect(cx + px1 - e / 2, cy + py1 - e / 2, e, e); ctx.fillRect(cx + px2 - e / 2, cy + py2 - e / 2, e, e);
+      } else if (i % 2 === 0) px(s.x, s.y, C.l0, cell * .38);
+    });
+  }
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), .1); lastT = now;
+  if (state === 'play') {
+    acc += dt;
+    if (bonus) { bonus.t -= dt; if (bonus.t <= 0) bonus = null; }
+    while (acc >= interval() && state === 'play') { acc -= interval(); step(); }
+  } else if (state === 'dying') {
+    dieT -= dt; if (dieT <= 0) gameOver();
+  }
+  draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+reset();
+requestAnimationFrame(frame);
+})();
+</script>

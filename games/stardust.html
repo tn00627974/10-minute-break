@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>星塵防線</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+/* Layout: a vector-display column centred on a dark console; the HUD is the ship's readout strip, the field is drawn in glowing strokes */
+:root{
+  --void:#05060f;
+  --console:#0b0f22;
+  --edge:#1d2550;
+  --text:#dfe7ff;
+  --muted:#7c88b6;
+  --cyan:#5ef2ff;
+  --amber:#ffb547;
+  --magenta:#ff4fd8;
+  --display:"Chakra Petch","Noto Sans TC",system-ui,sans-serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--void)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:var(--void);color:var(--text);font-family:var(--body);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px;padding:6px 6px 6px 12px;border:1px solid var(--edge);border-radius:10px;background:var(--console)}
+.brand{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15;white-space:nowrap;overflow:hidden}
+.brand small{font-family:var(--display);font-size:.6rem;letter-spacing:.22em;color:var(--cyan)}
+.brand b{font-weight:900;font-size:.98rem;letter-spacing:.1em}
+.readout{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+.readout span{font-size:.62rem;color:var(--muted);letter-spacing:.14em}
+.readout b{font-family:var(--display);font-weight:700;font-size:1.05rem;font-variant-numeric:tabular-nums;min-width:5ch;text-align:right}
+.mult{font-family:var(--display);font-weight:700;font-size:.85rem;padding:2px 7px;border-radius:999px;border:1px solid var(--edge);color:var(--muted);font-variant-numeric:tabular-nums;transition:color .15s,border-color .15s}
+.mult.hot{color:var(--amber);border-color:var(--amber);box-shadow:0 0 10px rgba(255,181,71,.35)}
+.lives{display:flex;gap:4px}
+.lives i{width:10px;height:12px;background:var(--cyan);clip-path:polygon(50% 0,100% 100%,50% 72%,0 100%);filter:drop-shadow(0 0 4px var(--cyan))}
+.icon-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--edge);background:transparent;color:var(--text);cursor:pointer;font-size:.85rem;display:grid;place-items:center;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:12px;overflow:hidden;touch-action:none;background:var(--void);box-shadow:0 0 0 1px var(--edge),0 0 40px rgba(94,242,255,.06)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pop{position:absolute;left:0;right:0;top:34%;text-align:center;font:900 1.3rem var(--body);letter-spacing:.18em;color:var(--amber);text-shadow:0 0 16px rgba(255,181,71,.7);opacity:0;pointer-events:none}
+.pop.show{animation:pop 1.2s ease-out}
+@keyframes pop{0%{opacity:0;letter-spacing:.5em}15%{opacity:1;letter-spacing:.18em}75%{opacity:1}100%{opacity:0}}
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);padding:20px 18px 16px;border-radius:12px;background:rgba(8,11,28,.86);border:1px solid rgba(94,242,255,.35);box-shadow:0 0 30px rgba(94,242,255,.12);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;flex-direction:column;gap:10px;cursor:pointer}
+.overlay small{font-family:var(--display);font-size:.7rem;letter-spacing:.3em;color:var(--cyan)}
+.overlay h1{margin:0;font-size:1.5rem;font-weight:900;letter-spacing:.12em;text-wrap:balance}
+.overlay p{margin:0;font-size:.9rem;line-height:1.75;color:#c5cdea;max-width:40ch}
+.overlay .tags{display:flex;gap:10px;flex-wrap:wrap;font-size:.8rem;color:#c5cdea}
+.overlay .tags span{display:inline-flex;align-items:center;gap:6px}
+.tag{font-family:var(--display);font-weight:700;width:20px;height:20px;display:inline-grid;place-items:center;border:1.5px solid currentColor;transform:rotate(45deg);font-size:.7rem}
+.tag i{font-style:normal;transform:rotate(-45deg)}
+.tag.p{color:var(--cyan)}.tag.s{color:#7cff9e}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stats div{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--edge);border-radius:8px}
+.stats span{font-size:.66rem;color:var(--muted);letter-spacing:.12em}
+.stats b{font-family:var(--display);font-size:1.1rem;font-variant-numeric:tabular-nums}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:2px}
+.btn{appearance:none;border:1.5px solid var(--cyan);background:rgba(94,242,255,.1);color:var(--cyan);font:900 1rem var(--body);padding:9px 22px;border-radius:8px;cursor:pointer;letter-spacing:.2em;box-shadow:0 0 14px rgba(94,242,255,.25)}
+.btn:hover{background:rgba(94,242,255,.18)}
+.keys{font-size:.76rem;color:var(--muted)}
+.rec{color:var(--amber);font-weight:900}
+button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+@media (max-width:440px){.brand small{display:none}}
+@media (prefers-reduced-motion:reduce){
+  .pop.show{animation:fade 1.2s}
+  @keyframes fade{0%,100%{opacity:0}15%,75%{opacity:1}}
+}
+</style>
+
+<header class="hud">
+  <div class="brand"><small>STARDUST LINE</small><b>星塵防線</b></div>
+  <div class="readout"><span>分數</span><b id="score">0</b></div>
+  <div class="mult" id="mult" title="連擊倍率">×1</div>
+  <div class="lives" id="lives" aria-label="剩餘戰機"></div>
+  <button class="icon-btn" id="pause" aria-label="暫停">Ⅱ</button>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <div class="pop" id="pop" aria-live="polite"></div>
+  <section class="overlay" id="overlay">
+    <small id="ov-kicker">STARDUST LINE</small>
+    <h1 id="ov-title">星塵防線</h1>
+    <p id="ov-text">在畫面任何地方拖曳就能移動戰機，火砲會自動開。連續擊落會疊加倍率，被打中倍率歸零。撐過一陣子，母艦就會出現。</p>
+    <div class="tags" id="ov-tags">
+      <span><b class="tag p"><i>P</i></b>火力升級</span>
+      <span><b class="tag s"><i>S</i></b>護盾擋一發</span>
+    </div>
+    <div class="stats" id="ov-stats" hidden>
+      <div><span>得分</span><b id="st-score">0</b></div>
+      <div><span>存活</span><b id="st-time">0:00</b></div>
+      <div><span>擊落</span><b id="st-kills">0</b></div>
+    </div>
+    <div class="row"><button class="btn" id="ov-btn">出擊</button><span class="keys" id="ov-keys">電腦：滑鼠或方向鍵・P 暫停</span></div>
+  </section>
+</main>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const scoreEl = $('score'), multEl = $('mult'), livesEl = $('lives'), pop = $('pop');
+const ov = $('overlay'), ovKicker = $('ov-kicker'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovTags = $('ov-tags'), ovStats = $('ov-stats'), ovBtn = $('ov-btn'), ovKeys = $('ov-keys');
+const muteBtn = $('mute'), pauseBtn = $('pause');
+const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const W = 400;
+let H = 680, S = 1, DPR = 1;
+let state = 'ready', prevState = 'play';
+const player = { x: W / 2, y: 590, inv: 0, power: 1, shield: false, fire: 0 };
+function fit() {
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S;
+  if (state === 'ready') player.y = H - 110; else clampPlayer();
+}
+function clampPlayer() {
+  player.x = Math.max(16, Math.min(W - 16, player.x));
+  player.y = Math.max(H * .3, Math.min(H - 22, player.y));
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+
+/* ---------- sound ---------- */
+let actx = null, muted = !!store.get('stardust.muted', false);
+function tone(f, d = .1, type = 'square', v = .035, slide = 0) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) {}
+}
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('stardust.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) tone(880, .06, 'triangle'); });
+
+/* ---------- world ---------- */
+const COL = { cyan: '#5ef2ff', amber: '#ffb547', magenta: '#ff4fd8', green: '#7cff9e', white: '#ffffff' };
+const stars = [[50, 18, .9, .35], [30, 46, 1.3, .55], [16, 110, 1.9, .85]].map(([n, v, s, a]) =>
+  Array.from({ length: n }, () => ({ x: Math.random() * W, y: Math.random() * 900, v, s, a })));
+let bullets = [], ebullets = [], enemies = [], pickups = [], parts = [];
+let score = 0, lives = 3, elapsed = 0, spawnT = 1, nextBoss = 50, bossCount = 0, boss = null;
+let chain = 0, chainT = 0, kills = 0, shake = 0, overAt = 0;
+let best = store.get('stardust.best', 0);
+let mouse = null, drag = null;
+const keys = new Set();
+
+const multiplier = () => Math.min(8, 1 + Math.floor(chain / 6));
+let shownScore = -1, shownMult = -1, shownLives = -1;
+function hud() {
+  if (score !== shownScore) { scoreEl.textContent = score; shownScore = score; }
+  const m = multiplier();
+  if (m !== shownMult) { multEl.textContent = '×' + m; multEl.classList.toggle('hot', m > 1); shownMult = m; }
+  if (lives !== shownLives) { livesEl.innerHTML = '<i></i>'.repeat(Math.max(0, lives)); shownLives = lives; }
+}
+function showPop(text) { pop.textContent = text; pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show'); }
+
+function reset() {
+  bullets = []; ebullets = []; enemies = []; pickups = []; parts = [];
+  score = 0; lives = 3; elapsed = 0; spawnT = 1; nextBoss = 50; bossCount = 0; boss = null;
+  chain = 0; chainT = 0; kills = 0; shake = 0;
+  player.x = W / 2; player.y = H - 110; player.inv = 1.5; player.power = 1; player.shield = false; player.fire = 0;
+  hud();
+}
+function start() {
+  if (state === 'play') return;
+  reset(); state = 'play'; ov.hidden = true; ovBtn.blur();
+  showPop('出擊'); tone(440, .25, 'triangle', .05, 2);
+}
+function pause() {
+  if (state !== 'play') return;
+  prevState = state; state = 'paused'; drag = null;
+  ovKicker.textContent = 'PAUSED'; ovTitle.textContent = '暫停中';
+  ovText.textContent = '戰機待命，敵機也停在原地。';
+  ovTags.hidden = true; ovStats.hidden = true; ovBtn.textContent = '繼續'; ovKeys.textContent = 'P 或空白鍵繼續';
+  ov.hidden = false;
+}
+function resume() { if (state !== 'paused') return; state = prevState; ov.hidden = true; ovBtn.blur(); }
+const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+function gameOver() {
+  state = 'over'; overAt = performance.now();
+  const rec = score > best && score > 0;
+  if (rec) { best = score; store.set('stardust.best', best); }
+  ovKicker.textContent = 'SIGNAL LOST'; ovTitle.textContent = '防線失守';
+  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `最高紀錄 ${best} 分。`;
+  $('st-score').textContent = score; $('st-time').textContent = fmtTime(elapsed); $('st-kills').textContent = kills;
+  ovTags.hidden = true; ovStats.hidden = false; ovBtn.textContent = '再次出擊'; ovKeys.textContent = '點擊畫面・空白鍵';
+  setTimeout(() => { if (state === 'over') ov.hidden = false; }, 900);
+}
+
+/* ---------- spawning ---------- */
+function drone(x, y) {
+  return { type: 'drone', x, y, bx: x, vy: 70 + Math.random() * 40 + elapsed * .4, hp: elapsed > 90 ? 2 : 1, r: 13, t: 0, ph: Math.random() * 6,
+    amp: 20 + Math.random() * 40, freq: 1.5 + Math.random() * 1.5, score: 100, col: COL.magenta, cd: elapsed > 45 ? 1.5 + Math.random() * 2 : null };
+}
+function spawnEnemy() {
+  const r = Math.random(), x = 30 + Math.random() * (W - 60);
+  if (elapsed > 10 && r < .14 && !boss) {
+    const cx = 60 + Math.random() * (W - 120);
+    for (let i = -2; i <= 2; i++) { const d = drone(cx + i * 34, -20 - Math.abs(i) * 26); d.amp = 0; d.bx = Math.max(20, Math.min(W - 20, d.bx)); enemies.push(d); }
+    return;
+  }
+  if (elapsed > 35 && r < .3) enemies.push({ type: 'tank', x, y: -30, vy: 38, hp: 6 + Math.floor(elapsed / 60) * 2, r: 20, t: 0, cd: 1 + Math.random(), score: 400, col: COL.green });
+  else if (elapsed > 18 && r < .55) enemies.push({ type: 'dart', x, y: -20, vx: 0, vy: 90, hp: 1, r: 10, t: 0, score: 150, col: COL.amber, dived: false });
+  else enemies.push(drone(x, -20));
+}
+function spawnBoss() {
+  bossCount++;
+  const hp = 140 + bossCount * 70;
+  boss = { type: 'boss', x: W / 2, y: -60, r: 44, hp, max: hp, t: 0, mt: 0, cd: 1.6, cd2: 2.6, score: 5000 * bossCount, col: COL.magenta };
+  enemies.push(boss); showPop('母艦接近'); tone(110, .8, 'sawtooth', .05, .5);
+}
+function aim(e, sp, spread = 0) {
+  const a = Math.atan2(player.y - e.y, player.x - e.x) + spread;
+  ebullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 4 });
+}
+function ring(e, n, sp, off) {
+  for (let i = 0; i < n; i++) { const a = off + i / n * Math.PI * 2; ebullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 4 }); }
+}
+function fire() {
+  const pats = [null,
+    [[0, 0]],
+    [[-7, 0], [7, 0]],
+    [[0, 0], [-9, -.14], [9, .14]],
+    [[-5, 0], [5, 0], [-10, -.18], [10, .18], [-12, -.34], [12, .34]]];
+  for (const [dx, a] of pats[player.power]) bullets.push({ x: player.x + dx, y: player.y - 14, vx: 640 * Math.sin(a), vy: -640 * Math.cos(a) });
+}
+
+/* ---------- effects ---------- */
+function explode(x, y, col, n, sp = 220) {
+  if (reduce) n = Math.ceil(n / 2);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, v = 50 + Math.random() * sp, life = .4 + Math.random() * .6;
+    parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, max: life, col });
+  }
+}
+function kill(e) {
+  if (e.dead) return;
+  e.dead = true; kills++; chain++; chainT = 1.6;
+  score += e.score * multiplier();
+  if (e === boss) {
+    boss = null; nextBoss = elapsed + 70;
+    explode(e.x, e.y, COL.magenta, 70, 320); explode(e.x, e.y, COL.amber, 40, 200);
+    for (const b of ebullets) explode(b.x, b.y, COL.amber, 2, 60);
+    ebullets = []; shake = 16; showPop('母艦擊沉');
+    pickups.push({ x: e.x - 24, y: e.y, type: 'P', rot: 0 }, { x: e.x + 24, y: e.y, type: 'S', rot: 0 });
+    tone(80, 1, 'sawtooth', .07, .4);
+  } else {
+    explode(e.x, e.y, e.col, e.type === 'tank' ? 24 : 12);
+    shake = Math.max(shake, e.type === 'tank' ? 6 : 2.5);
+    tone(e.type === 'tank' ? 140 : 260, .14, 'square', .03, .4);
+    const chance = e.type === 'tank' ? .45 : .06;
+    if (Math.random() < chance) pickups.push({ x: e.x, y: e.y, type: player.power < 4 && Math.random() < .65 ? 'P' : 'S', rot: 0 });
+  }
+}
+function hitPlayer() {
+  if (player.inv > 0 || state !== 'play') return;
+  if (player.shield) {
+    player.shield = false; player.inv = 1.2; explode(player.x, player.y, COL.green, 14);
+    showPop('護盾抵擋'); tone(600, .2, 'triangle', .05, .5); return;
+  }
+  lives--; player.power = Math.max(1, player.power - 1); player.inv = 2.4; chain = 0;
+  explode(player.x, player.y, COL.cyan, 28, 260); shake = 12;
+  tone(110, .5, 'sawtooth', .07, .5);
+  if (lives <= 0) { explode(player.x, player.y, COL.white, 40, 300); gameOver(); }
+}
+
+/* ---------- update ---------- */
+function update(dt) {
+  if (state === 'paused') return;
+  for (const layer of stars) for (const s of layer) { s.y += s.v * dt * (state === 'play' ? 1 : .5); if (s.y > H) { s.y -= H; s.x = Math.random() * W; } }
+  for (const p of parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .985; p.vy *= .985; p.life -= dt; }
+  parts = parts.filter(p => p.life > 0);
+  shake = Math.max(0, shake - dt * 30);
+  if (state !== 'play') { for (const b of ebullets) { b.x += b.vx * dt; b.y += b.vy * dt; } return; }
+
+  elapsed += dt;
+  let dx = 0, dy = 0;
+  if (keys.has('ArrowLeft') || keys.has('KeyA')) dx--;
+  if (keys.has('ArrowRight') || keys.has('KeyD')) dx++;
+  if (keys.has('ArrowUp') || keys.has('KeyW')) dy--;
+  if (keys.has('ArrowDown') || keys.has('KeyS')) dy++;
+  if (dx || dy) { const m = Math.hypot(dx, dy); player.x += dx / m * 300 * dt; player.y += dy / m * 300 * dt; mouse = null; }
+  else if (mouse) {
+    const mx = mouse.x - player.x, my = mouse.y - player.y, d = Math.hypot(mx, my), step = 560 * dt;
+    if (d > step) { player.x += mx / d * step; player.y += my / d * step; } else { player.x = mouse.x; player.y = mouse.y; }
+  }
+  clampPlayer();
+  player.inv = Math.max(0, player.inv - dt);
+  player.fire -= dt;
+  if (player.fire <= 0) { fire(); player.fire = .11; }
+
+  if (elapsed >= nextBoss && !boss) spawnBoss();
+  spawnT -= dt;
+  if (spawnT <= 0) { spawnEnemy(); spawnT = Math.max(.3, 1.05 - elapsed * .008) * (boss ? 3 : 1); }
+
+  for (const b of bullets) { b.x += b.vx * dt; b.y += b.vy * dt; }
+  bullets = bullets.filter(b => b.y > -20 && b.x > -20 && b.x < W + 20);
+  for (const b of ebullets) { b.x += b.vx * dt; b.y += b.vy * dt; }
+  ebullets = ebullets.filter(b => b.y > -30 && b.y < H + 30 && b.x > -30 && b.x < W + 30);
+
+  for (const e of enemies) {
+    e.t += dt; e.hit = Math.max(0, (e.hit || 0) - dt);
+    if (e.type === 'drone') {
+      e.y += e.vy * dt; e.x = e.bx + Math.sin(e.t * e.freq + e.ph) * e.amp;
+      if (e.cd != null) { e.cd -= dt; if (e.cd <= 0 && e.y > 40 && e.y < H * .6) { aim(e, 160); e.cd = 2.5 + Math.random() * 2; } }
+    } else if (e.type === 'dart') {
+      if (!e.dived) {
+        e.y += e.vy * dt;
+        if (e.t > .8) { e.dived = true; const a = Math.atan2(player.y - e.y, player.x - e.x); e.vx = Math.cos(a) * 330; e.vy = Math.sin(a) * 330; tone(900, .15, 'triangle', .02, .5); }
+      } else { e.x += e.vx * dt; e.y += e.vy * dt; }
+    } else if (e.type === 'tank') {
+      e.y += e.vy * dt; e.cd -= dt;
+      if (e.cd <= 0 && e.y > 20) { aim(e, 190, -.12); aim(e, 190, .12); e.cd = 1.8; }
+    } else if (e.type === 'boss') {
+      if (e.y < 120) e.y += 55 * dt;
+      else {
+        e.mt += dt; e.x = W / 2 + Math.sin(e.mt * .55) * (W / 2 - 70);
+        e.cd -= dt; e.cd2 -= dt;
+        if (e.cd <= 0) { ring(e, 14 + bossCount * 2, 135, e.mt); e.cd = Math.max(1.4, 2.4 - bossCount * .25); }
+        if (e.cd2 <= 0) { aim(e, 220, -.18); aim(e, 220, 0); aim(e, 220, .18); e.cd2 = 1.5; }
+      }
+    }
+    if (e.type !== 'boss' && (e.y > H + 50 || e.x < -80 || e.x > W + 80)) e.gone = true;
+  }
+
+  for (const e of enemies) {
+    if (e.dead || e.gone) continue;
+    for (const b of bullets) {
+      if (b.dead) continue;
+      const ddx = b.x - e.x, ddy = b.y - e.y;
+      if (ddx * ddx + ddy * ddy < (e.r + 3) * (e.r + 3)) {
+        b.dead = true; e.hp--; e.hit = .07;
+        if (Math.random() < .5) explode(b.x, b.y, e.col, 1, 90);
+        if (e.hp <= 0) { kill(e); break; }
+      }
+    }
+  }
+  bullets = bullets.filter(b => !b.dead);
+
+  if (player.inv <= 0) {
+    for (const b of ebullets) {
+      const ddx = b.x - player.x, ddy = b.y - player.y;
+      if (ddx * ddx + ddy * ddy < (b.r + 5) * (b.r + 5)) { b.dead = true; hitPlayer(); break; }
+    }
+  }
+  if (player.inv <= 0) {
+    for (const e of enemies) {
+      if (e.dead || e.gone) continue;
+      const ddx = e.x - player.x, ddy = e.y - player.y;
+      if (ddx * ddx + ddy * ddy < (e.r + 7) * (e.r + 7)) {
+        hitPlayer();
+        if (e.type !== 'boss') { e.hp -= 3; if (e.hp <= 0) kill(e); }
+        break;
+      }
+    }
+  }
+  ebullets = ebullets.filter(b => !b.dead);
+  enemies = enemies.filter(e => !e.dead && !e.gone);
+
+  for (const p of pickups) {
+    p.y += 70 * dt; p.rot += dt * 2.5;
+    const ddx = p.x - player.x, ddy = p.y - player.y;
+    if (state === 'play' && ddx * ddx + ddy * ddy < 22 * 22) {
+      p.got = true;
+      if (p.type === 'P') {
+        if (player.power < 4) { player.power++; showPop('火力提升'); } else { score += 1000; showPop('+1000'); }
+      } else { player.shield = true; showPop('護盾展開'); }
+      tone(660, .18, 'triangle', .05, 1.5);
+    }
+  }
+  pickups = pickups.filter(p => !p.got && p.y < H + 20);
+
+  chainT -= dt; if (chainT <= 0) chain = 0;
+  hud();
+}
+
+/* ---------- draw ---------- */
+function poly(pts) { ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); }
+function neon(col, w, path) {
+  ctx.strokeStyle = col;
+  ctx.globalAlpha = .2; ctx.lineWidth = w * 4.5; ctx.beginPath(); path(); ctx.stroke();
+  ctx.globalAlpha = .95; ctx.lineWidth = w; ctx.beginPath(); path(); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+const HEX = r => Array.from({ length: 6 }, (_, i) => [Math.cos(i * Math.PI / 3 + Math.PI / 6) * r, Math.sin(i * Math.PI / 3 + Math.PI / 6) * r]);
+const OCT = r => Array.from({ length: 8 }, (_, i) => [Math.cos(i * Math.PI / 4 + Math.PI / 8) * r, Math.sin(i * Math.PI / 4 + Math.PI / 8) * r]);
+function drawEnemy(e, t) {
+  const col = e.hit > 0 ? COL.white : e.col;
+  ctx.save(); ctx.translate(e.x, e.y);
+  if (e.type === 'drone') {
+    neon(col, 1.6, () => { poly([[0, 13], [-12, -9], [12, -9]]); ctx.moveTo(-5, -9); ctx.lineTo(0, 2); ctx.lineTo(5, -9); });
+  } else if (e.type === 'dart') {
+    ctx.rotate(Math.atan2(e.vy, e.vx) - Math.PI / 2);
+    neon(col, 1.6, () => poly([[0, 13], [-6, -12], [0, -6], [6, -12]]));
+  } else if (e.type === 'tank') {
+    neon(col, 1.8, () => poly(HEX(20)));
+    ctx.rotate(t * 1.4); neon(col, 1.2, () => poly(HEX(9)));
+  } else if (e.type === 'boss') {
+    neon(col, 2.2, () => poly(OCT(44)));
+    ctx.save(); ctx.rotate(-t * .8); neon(e.hit > 0 ? COL.white : COL.amber, 1.6, () => poly([[0, -27], [27, 0], [0, 27], [-27, 0]])); ctx.restore();
+    const pulse = 8 + Math.sin(t * 6) * 2;
+    neon(col, 1.6, () => ctx.arc(0, 0, pulse, 0, Math.PI * 2));
+    neon(col, 1.2, () => { for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + Math.PI / 8; ctx.moveTo(Math.cos(a) * 44, Math.sin(a) * 44); ctx.lineTo(Math.cos(a) * 54, Math.sin(a) * 54); } });
+  }
+  ctx.restore();
+}
+function drawPlayer(t) {
+  if (player.inv > 0 && state === 'play' && Math.floor(player.inv * 12) % 2 === 0) return;
+  ctx.save(); ctx.translate(player.x, player.y);
+  neon(COL.cyan, 1.7, () => poly([[0, -15], [11, 11], [0, 5], [-11, 11]]));
+  const fl = 6 + Math.random() * 7;
+  neon(COL.amber, 1.3, () => { ctx.moveTo(-4, 8); ctx.lineTo(0, 9 + fl); ctx.lineTo(4, 8); });
+  if (player.shield) neon(COL.green, 1.3, () => ctx.arc(0, 0, 21, t * 2.5, t * 2.5 + Math.PI * 1.6));
+  ctx.restore();
+}
+function draw(t) {
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#cfe3ff';
+  for (const layer of stars) for (const s of layer) { ctx.globalAlpha = s.a; ctx.fillRect(s.x, s.y, s.s, s.s * (s.v > 100 ? 3 : 1)); }
+  ctx.globalAlpha = 1;
+  // faint range rings around the ship's lane, the way a vector radar would show it
+  ctx.strokeStyle = 'rgba(94,242,255,.05)'; ctx.lineWidth = 1;
+  for (let i = 1; i <= 3; i++) { ctx.beginPath(); ctx.arc(W / 2, H + 40, H * .32 * i, Math.PI, Math.PI * 2); ctx.stroke(); }
+
+  ctx.save();
+  if (shake > 0 && !reduce) ctx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake);
+  ctx.globalCompositeOperation = 'lighter'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+
+  ctx.font = '700 11px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const p of pickups) {
+    const col = p.type === 'P' ? COL.cyan : COL.green;
+    ctx.save(); ctx.translate(p.x, p.y);
+    ctx.save(); ctx.rotate(p.rot); neon(col, 1.4, () => poly([[0, -11], [11, 0], [0, 11], [-11, 0]])); ctx.restore();
+    ctx.fillStyle = col; ctx.fillText(p.type, 0, 1);
+    ctx.restore();
+  }
+  if (state === 'ready') {
+    for (let i = 0; i < 3; i++) drawEnemy({ type: 'drone', x: W / 2 + (i - 1) * 90, y: H * .3 + Math.sin(t * 1.5 + i) * 10, col: COL.magenta, hit: 0 }, t);
+    drawEnemy({ type: 'tank', x: W / 2, y: H * .18, col: COL.green, hit: 0 }, t);
+  }
+  for (const e of enemies) drawEnemy(e, t);
+  if (bullets.length) neon('#c8fbff', 2, () => { for (const b of bullets) { ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx * .018, b.y - b.vy * .018); } });
+  if (ebullets.length) {
+    ctx.fillStyle = COL.amber;
+    ctx.globalAlpha = .22; ctx.beginPath(); for (const b of ebullets) { ctx.moveTo(b.x + b.r * 2.2, b.y); ctx.arc(b.x, b.y, b.r * 2.2, 0, Math.PI * 2); } ctx.fill();
+    ctx.globalAlpha = 1; ctx.beginPath(); for (const b of ebullets) { ctx.moveTo(b.x + b.r, b.y); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); } ctx.fill();
+  }
+  if (state !== 'over') drawPlayer(t);
+  ctx.lineWidth = 1.6;
+  for (const p of parts) {
+    ctx.globalAlpha = p.life / p.max; ctx.strokeStyle = p.col;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * .04, p.y - p.vy * .04); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  if (boss) {
+    ctx.globalCompositeOperation = 'source-over';
+    const bw = W - 40;
+    ctx.fillStyle = 'rgba(255,79,216,.18)'; ctx.fillRect(20, 12, bw, 4);
+    ctx.fillStyle = COL.magenta; ctx.fillRect(20, 12, bw * Math.max(0, boss.hp / boss.max), 4);
+    ctx.font = '700 9px "Chakra Petch", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('MOTHERSHIP ' + String(bossCount).padStart(2, '0'), 20, 20);
+  }
+}
+
+/* ---------- input ---------- */
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('button')) return;
+  if (e.button > 0) return;
+  e.preventDefault();
+  if (state === 'ready' || (state === 'over' && performance.now() - overAt > 1000)) start();
+  else if (state === 'paused') resume();
+  if (e.pointerType !== 'mouse') drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+});
+stage.addEventListener('pointermove', e => {
+  if (e.pointerType === 'mouse') {
+    const r = stage.getBoundingClientRect();
+    mouse = { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S };
+    return;
+  }
+  if (!drag || drag.id !== e.pointerId || state !== 'play') return;
+  player.x += (e.clientX - drag.x) / S * 1.3;
+  player.y += (e.clientY - drag.y) / S * 1.3;
+  drag.x = e.clientX; drag.y = e.clientY;
+  clampPlayer();
+});
+const endDrag = e => { if (drag && drag.id === e.pointerId) drag = null; };
+stage.addEventListener('pointerup', endDrag);
+stage.addEventListener('pointercancel', endDrag);
+stage.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mouse = null; });
+ovBtn.addEventListener('click', () => { if (state === 'paused') resume(); else if (state !== 'play') start(); });
+pauseBtn.addEventListener('click', () => { pauseBtn.blur(); state === 'paused' ? resume() : pause(); });
+const MOVE = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'];
+addEventListener('keydown', e => {
+  if (MOVE.includes(e.code)) { keys.add(e.code); e.preventDefault(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { state === 'paused' ? resume() : pause(); return; }
+  if (e.code === 'Space' || e.code === 'Enter') {
+    if (e.target.closest && e.target.closest('button')) return;
+    e.preventDefault(); if (e.repeat) return;
+    if (state === 'paused') resume();
+    else if (state === 'ready' || (state === 'over' && performance.now() - overAt > 1000)) start();
+  }
+});
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => { keys.clear(); pause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+/* ---------- loop ---------- */
+hud();
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30);
+  lastT = now; update(dt); draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
