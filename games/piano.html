@@ -48,12 +48,28 @@ body{
 .icon-btn.off{color:var(--muted);text-decoration:line-through}
 .stage{position:relative;flex:1;min-height:0;width:100%;max-width:460px;border-radius:6px;overflow:hidden;touch-action:none;background:var(--ivory);box-shadow:0 0 0 6px #1d1a16,0 0 0 7px var(--brass),0 24px 60px rgba(0,0,0,.6)}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
-.overlay{position:absolute;left:14px;right:14px;top:16px;z-index:5;padding:18px;border-radius:8px;background:rgba(13,19,36,.94);border:1px solid var(--brass);display:flex;flex-direction:column;gap:10px;color:var(--text)}
+.overlay{position:absolute;left:14px;right:14px;top:16px;z-index:5;padding:18px;border-radius:8px;background:rgba(13,19,36,.94);border:1px solid var(--brass);display:flex;flex-direction:column;gap:10px;color:var(--text);max-height:calc(75% - 28px);overflow-y:auto;overscroll-behavior:contain}
+.menu,.editor{display:flex;flex-direction:column;gap:10px}
 .overlay h1{margin:0;font-weight:900;font-size:1.35rem;letter-spacing:.12em}
 .overlay p{margin:0;font-size:.9rem;line-height:1.75;color:#cfd3e2;max-width:40ch}
 .pieces{display:flex;gap:6px;flex-wrap:wrap}
-.pieces button{appearance:none;border:1px solid #3a4468;border-radius:999px;background:transparent;color:var(--text);font:700 .82rem var(--serif);padding:6px 12px;cursor:pointer}
+.pieces{row-gap:7px}
+.pieces button{appearance:none;border:1px solid #3a4468;border-radius:999px;background:transparent;color:var(--text);font:700 .8rem var(--serif);padding:5px 11px;cursor:pointer}
+.pieces .grp{flex-basis:100%;font-size:.7rem;color:var(--muted);letter-spacing:.2em;margin-top:2px}
+.pieces .grp:first-child{margin-top:0}
 .pieces button[aria-pressed="true"]{background:var(--brass);border-color:var(--brass);color:#22190a}
+.pieces .add{border-style:dashed;border-color:var(--brass);color:var(--brass)}
+.editor label{font-size:.78rem;color:var(--muted);letter-spacing:.1em}
+.editor input,.editor textarea{width:100%;border:1px solid #3a4468;border-radius:6px;background:#0a0f1d;color:var(--text);font:500 1rem var(--serif);padding:8px 10px;-webkit-user-select:text;user-select:text}
+.editor textarea{font-family:ui-monospace,Menlo,Consolas,monospace;line-height:1.6;min-height:88px;resize:vertical}
+.editor input:focus,.editor textarea:focus{outline:2px solid var(--brass);outline-offset:1px}
+.overlay .hint{font-size:.78rem;line-height:1.75;color:var(--muted)}
+.overlay .hint code{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--text);background:rgba(255,255,255,.08);padding:0 4px;border-radius:3px}
+.overlay .msg{font-size:.84rem;color:var(--brass)}
+.overlay .msg.err{color:#ff8a80}
+.ghost{appearance:none;border:1px solid #3a4468;border-radius:6px;background:transparent;color:var(--text);font:700 .9rem var(--serif);padding:9px 14px;cursor:pointer}
+.ghost.small{padding:5px 10px;font-size:.78rem;color:var(--muted)}
+.ghost.armed{border-color:var(--wrong);color:#ff8a80}
 .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .btn{appearance:none;border:0;border-radius:6px;background:var(--ivory);color:var(--ebony);font:900 1rem var(--serif);padding:10px 22px;cursor:pointer;letter-spacing:.14em}
 .keys{font-size:.78rem;color:var(--muted)}
@@ -70,13 +86,21 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   <canvas id="cv"></canvas>
   <section class="overlay" id="overlay">
     <h1 id="ov-title">月光鋼琴</h1>
-    <p id="ov-text">只踩黑鍵。由下往上依序點，每點一下就彈出曲子的下一個音。點到白鍵、或讓黑鍵溜出底部，演奏就結束；越彈越快。</p>
-    <div class="pieces" id="pieces" role="group" aria-label="曲目">
-      <button data-m="0" aria-pressed="true">小星星</button>
-      <button data-m="1" aria-pressed="false">歡樂頌</button>
-      <button data-m="2" aria-pressed="false">給愛麗絲</button>
+    <div class="menu" id="menu">
+      <p id="ov-text">只踩黑鍵，由下往上依序點，每點一下就彈出下一個音。點到白鍵或漏掉黑鍵就結束，越彈越快。</p>
+      <div class="row"><button class="btn" id="ov-btn">點最下面的「開始」</button><span class="keys">電腦可用 D F J K 對應四條鍵</span></div>
+      <div class="pieces" id="pieces" role="group" aria-label="曲目"></div>
+      <button class="ghost small" id="song-del" type="button" hidden></button>
     </div>
-    <div class="row"><button class="btn" id="ov-btn">點最下面的「開始」</button><span class="keys">電腦可用 D F J K 對應四條鍵</span></div>
+    <form class="editor" id="editor" hidden>
+      <label for="song-name">曲名</label>
+      <input id="song-name" maxlength="12" placeholder="例如：我的第一首" autocomplete="off">
+      <label for="song-score">簡譜</label>
+      <textarea id="song-score" rows="4" placeholder="1 1 5 5 | 6 6 5 - | 4 4 3 3 | 2 2 1 -" spellcheck="false" autocomplete="off"></textarea>
+      <p class="hint">用 1 到 7 寫音符，1 是中央 Do。高八度在後面加 <code>'</code>，例如 <code>1'</code>；低八度加 <code>,</code>，例如 <code>5,</code>。升半音寫 <code>#4</code>，降半音寫 <code>b7</code>。空格、<code>|</code>、<code>-</code> 和 <code>0</code> 都會略過，只看音的順序。</p>
+      <p class="msg" id="song-msg" aria-live="polite">還沒有音符</p>
+      <div class="row"><button type="submit" class="btn">存起來</button><button type="button" class="ghost" id="song-try">試聽</button><button type="button" class="ghost" id="song-cancel">取消</button></div>
+    </form>
   </section>
 </main>
 
@@ -91,12 +115,63 @@ const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
 const bestEl = $('best'), pieceEl = $('piece'), muteBtn = $('mute');
 const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn'), piecesEl = $('pieces');
 
-const MELODIES = [
-  { name: '小星星', notes: [60,60,67,67,69,69,67, 65,65,64,64,62,62,60, 67,67,65,65,64,64,62, 67,67,65,65,64,64,62, 60,60,67,67,69,69,67, 65,65,64,64,62,62,60] },
-  { name: '歡樂頌', notes: [64,64,65,67,67,65,64,62,60,60,62,64,64,62,62, 64,64,65,67,67,65,64,62,60,60,62,64,62,60,60] },
-  { name: '給愛麗絲', notes: [76,75,76,75,76,71,74,72,69, 60,64,69,71, 64,68,71,72, 64,76,75,76,75,76,71,74,72,69, 60,64,69,71, 64,72,71,69] }
+/* ---------- songs, written in numbered notation (簡譜) ----------
+   1–7 = Do Re Mi Fa Sol La Si, with 1 = middle C (MIDI 60)
+   ' after a note = one octave up (1' = high Do), , after a note = one octave down (5, = low Sol)
+   # before = sharp, b before = flat; spaces, | , - and 0 are ignored — only the order of notes matters
+   To add a song, append { name, score } here. key moves the whole song, e.g. key: 'G' makes 1 = G. */
+// group decides where a song sits in the picker; new songs go at the end so saved picks keep pointing at the same song
+const SONGS = [
+  { name: '小星星', group: '童謠', score: '1 1 5 5 | 6 6 5 - | 4 4 3 3 | 2 2 1 - | 5 5 4 4 | 3 3 2 - | 5 5 4 4 | 3 3 2 - | 1 1 5 5 | 6 6 5 - | 4 4 3 3 | 2 2 1 -' },
+  { name: '歡樂頌', group: '名曲', score: '3 3 4 5 | 5 4 3 2 | 1 1 2 3 | 3 2 2 - | 3 3 4 5 | 5 4 3 2 | 1 1 2 3 | 2 1 1 - | 2 2 3 1 | 2 3 4 3 1 | 2 3 4 3 2 | 1 2 5, - | 3 3 4 5 | 5 4 3 2 | 1 1 2 3 | 2 1 1 -' },
+  { name: '給愛麗絲', group: '名曲', score: "3' #2' 3' #2' 3' 7 2' 1' | 6 - 1 3 6 | 7 - 3 #5 7 | 1' - 3 3' #2' | 3' #2' 3' 7 2' 1' | 6 - 1 3 6 | 7 - 3 1' 7 | 6 -" },
+  { name: '小蜜蜂', group: '童謠', score: '5 3 3 - | 4 2 2 - | 1 2 3 4 | 5 5 5 - | 5 3 3 - | 4 2 2 - | 1 3 5 5 | 3 - - - | 2 2 2 2 | 2 3 4 - | 3 3 3 3 | 3 4 5 - | 5 3 3 - | 4 2 2 - | 1 3 5 5 | 1 - - -' },
+  { name: '兩隻老虎', group: '童謠', score: '1 2 3 1 | 1 2 3 1 | 3 4 5 - | 3 4 5 - | 5 6 5 4 3 1 | 5 6 5 4 3 1 | 1 5, 1 - | 1 5, 1 -' },
+  { name: '生日快樂', group: '節日', score: "5 5 6 5 | 1' 7 - | 5 5 6 5 | 2' 1' - | 5 5 5' 3' | 1' 7 6 - | 4' 4' 3' 1' | 2' 1' -" },
+  { name: '瑪莉有隻小綿羊', group: '童謠', score: '3 2 1 2 | 3 3 3 - | 2 2 2 - | 3 5 5 - | 3 2 1 2 | 3 3 3 3 | 2 2 3 2 | 1 - - -' },
+  { name: '倫敦鐵橋', group: '童謠', score: '5 6 5 4 | 3 4 5 - | 2 3 4 - | 3 4 5 - | 5 6 5 4 | 3 4 5 - | 2 - 5 - | 3 1 - -' },
+  { name: '聖誕鈴聲', group: '節日', score: '3 3 3 - | 3 3 3 - | 3 5 1 2 | 3 - - - | 4 4 4 4 | 4 3 3 3 3 | 3 2 2 3 | 2 - 5 - | 3 3 3 - | 3 3 3 - | 3 5 1 2 | 3 - - - | 4 4 4 4 | 4 3 3 3 3 | 5 5 4 2 | 1 - - -' },
+  { name: '念故鄉', group: '名曲', score: '3 5 5 - | 3 2 1 - | 2 3 5 3 | 2 - - - | 3 5 5 - | 3 2 1 - | 2 3 2 1 | 1 - - -' },
+  { name: '新年好', group: '節日', score: '1 1 1 5, | 3 3 3 1 | 1 3 5 5 | 4 3 2 - | 2 3 4 4 | 3 2 3 1 | 1 3 2 5, | 7, 2 1 -' },
+  { name: '平安夜', group: '節日', score: "5 6 5 3 - | 5 6 5 3 - | 2' 2' 7 - | 1' 1' 5 - | 6 6 1' 7 6 | 5 6 5 3 - | 6 6 1' 7 6 | 5 6 5 3 - | 2' 2' 4' 2' 7 | 1' 3' - | 1' 5 3 5 4 2 | 1 - -" },
+  { name: '王老先生有塊地', group: '童謠', score: '1 1 1 5, | 6, 6, 5, - | 3 3 2 2 | 1 - - 5, | 1 1 1 5, | 6, 6, 5, - | 3 3 2 2 | 1 - - -' },
+  { name: '聖者進行曲', group: '童謠', score: '1 3 4 5 - | 1 3 4 5 - | 1 3 4 5 3 1 3 2 - | 3 3 2 1 1 3 5 5 4 - | 3 4 5 3 1 2 1 -' },
+  { name: '噢！蘇珊娜', group: '童謠', score: '1 2 | 3 5 5 6 5 3 1 2 | 3 3 2 1 2 - | 1 2 3 5 5 6 5 3 1 2 | 3 3 2 2 1 - | 4 4 6 6 6 5 5 3 1 2 - | 1 2 3 5 5 6 5 3 1 2 | 3 3 2 2 1 -' },
+  { name: '送別', group: '名曲', score: "5 3 5 1' - | 6 1' 5 - | 5 1 2 3 2 1 | 2 - - - | 5 3 5 1' 7 | 6 1' 5 - | 5 2 3 4 7, | 1 - - - | 6 1' 1' - | 7 6 7 1' - | 6 7 1' 6 6 5 3 1 | 2 - - - | 5 3 5 1' 7 | 6 1' 5 - | 5 2 3 4 7, | 1 - - -" },
+  { name: '布拉姆斯搖籃曲', group: '名曲', score: "3 3 5 - | 3 3 5 - | 3 5 1' 7 6 6 5 | 2 3 4 2 2 3 4 - | 2 4 7 6 5 7 1' - | 1 1 1' 6 4 5 | 3 1 4 5 6 5 | 1 1 1' 6 4 5 | 3 1 4 3 2 1 -" },
+  { name: '綠袖子', group: '名曲', score: "6 1' 2' 3' 4' 3' 2' 7 5 6 7 1' 6 6 #5 6 7 #5 3 | 6 1' 2' 3' 4' 3' 2' 7 5 6 7 1' 7 6 #5 #4 #5 6 6 | 5' 5' #4' 3' 2' 7 5 6 7 1' 6 6 #5 6 7 #5 3 | 5' 5' #4' 3' 2' 7 5 6 7 1' 7 6 #5 #4 #5 6 6" },
+  { name: '卡農', group: '名曲', score: "3' 2' 1' 7 | 6 5 6 7 | 1' 7 6 5 | 4 3 4 2" },
+  { name: '土耳其進行曲', group: '名曲', score: "7 6 #5 6 1' - | 2' 1' 7 1' 3' - | 4' 3' #2' 3' 7' 6' #5' 6' 7' 6' #5' 6' 1'' -" }
 ];
-let melody = Math.min(2, Math.max(0, store.get('piano.piece', 0) | 0)), noteIdx = 0;
+const GROUPS = ['童謠', '節日', '名曲'];
+const KEY_OFFSET = { C: 0, 'C#': 1, Db: 1, D: 2, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6, G: 7, Ab: 8, A: 9, Bb: 10, B: 11 };
+const STEP = [0, 0, 2, 4, 5, 7, 9, 11];
+function parseScore(text, key = 'C') {
+  const base = 60 + (KEY_OFFSET[key] || 0), out = [];
+  // the curly quotes are what a phone keyboard types for '
+  const re = /([#♯b♭]?)([0-7])([',’‘′]*)/g;
+  let m;
+  while ((m = re.exec(String(text)))) {
+    const d = +m[2];
+    if (!d) continue;
+    let n = base + STEP[d];
+    if (m[1] === '#' || m[1] === '♯') n++; else if (m[1]) n--;
+    for (const c of m[3]) n += c === ',' ? -12 : 12;
+    out.push(Math.max(36, Math.min(96, n)));
+  }
+  return out;
+}
+SONGS.forEach(s => { s.notes = parseScore(s.score, s.key); });
+
+// songs a player typed in themselves live only in this browser
+let custom = store.get('piano.custom', []);
+if (!Array.isArray(custom)) custom = [];
+custom = custom.filter(s => s && typeof s.name === 'string' && typeof s.score === 'string').slice(0, 30);
+custom.forEach(s => { s.notes = parseScore(s.score); });
+const songOf = sel => typeof sel === 'string' ? custom[+sel.slice(1)] : SONGS[sel];
+let melody = store.get('piano.piece', 0);
+if (!songOf(melody) || !songOf(melody).notes.length) melody = 0;
+let noteIdx = 0;
 
 let actx = null, muted = !!store.get('piano.muted', false);
 function audio() {
@@ -146,24 +221,118 @@ function reset() {
   let lane = -1;
   for (let i = 0; i < 6; i++) { lane = pickLane(lane); rows.push({ y: H - rowH * (i + 1), lane, hit: false, start: i === 0 }); }
 }
-function setPiece(i) {
-  melody = i; store.set('piano.piece', i);
-  pieceEl.textContent = '曲目：' + MELODIES[i].name;
-  piecesEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.m === i)));
+/* ---------- song picker ---------- */
+const menu = $('menu'), editor = $('editor'), delBtn = $('song-del');
+const nameIn = $('song-name'), scoreIn = $('song-score'), msgEl = $('song-msg');
+const selKey = sel => String(sel);
+function renderPieces() {
+  piecesEl.innerHTML = '';
+  const add = (label, sel, cls) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = label; b.dataset.sel = selKey(sel);
+    if (cls) b.className = cls;
+    if (sel !== null) b.setAttribute('aria-pressed', String(selKey(sel) === selKey(melody)));
+    piecesEl.appendChild(b);
+  };
+  const label = t => { const s = document.createElement('span'); s.className = 'grp'; s.textContent = t; piecesEl.appendChild(s); };
+  for (const g of GROUPS) {
+    label(g);
+    SONGS.forEach((s, i) => { if (s.group === g) add(s.name, i); });
+  }
+  label('自訂');
+  custom.forEach((s, i) => add(s.name, 'c' + i, 'mine'));
+  add('＋ 自己加一首', null, 'add');
 }
-setPiece(melody);
-piecesEl.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; setPiece(+b.dataset.m); note(MELODIES[melody].notes[0]); });
+function setPiece(sel) {
+  melody = sel; store.set('piano.piece', sel);
+  pieceEl.textContent = '曲目：' + songOf(sel).name;
+  piecesEl.querySelectorAll('button[data-sel]').forEach(b => { if (b.hasAttribute('aria-pressed')) b.setAttribute('aria-pressed', String(b.dataset.sel === selKey(sel))); });
+  disarmDelete();
+  delBtn.hidden = typeof sel !== 'string';
+  if (!delBtn.hidden) delBtn.textContent = `刪除《${songOf(sel).name}》`;
+}
+piecesEl.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.classList.contains('add')) { openEditor(); return; }
+  const sel = b.dataset.sel.startsWith('c') ? b.dataset.sel : +b.dataset.sel;
+  setPiece(sel); note(songOf(sel).notes[0]);
+});
+
+// deleting a song takes two taps, since the viewer cannot show a confirm dialog
+let armT = 0;
+function disarmDelete() { clearTimeout(armT); delBtn.classList.remove('armed'); delete delBtn.dataset.armed; if (typeof melody === 'string' && songOf(melody)) delBtn.textContent = `刪除《${songOf(melody).name}》`; }
+delBtn.addEventListener('click', () => {
+  if (typeof melody !== 'string') return;
+  if (!delBtn.dataset.armed) {
+    delBtn.dataset.armed = '1'; delBtn.classList.add('armed'); delBtn.textContent = '再按一次就刪除';
+    armT = setTimeout(disarmDelete, 3000);
+    return;
+  }
+  custom.splice(+melody.slice(1), 1);
+  store.set('piano.custom', custom.map(({ name, score }) => ({ name, score })));
+  melody = 0; renderPieces(); setPiece(0);
+});
+
+/* ---------- add-a-song form ---------- */
+let prevTitle = '', tryTimers = [];
+function stopTry() { tryTimers.forEach(clearTimeout); tryTimers = []; }
+function showCount() {
+  const n = parseScore(scoreIn.value).length;
+  msgEl.classList.remove('err');
+  msgEl.textContent = n ? `讀到 ${n} 個音` : '還沒有音符';
+}
+function openEditor() {
+  prevTitle = ovTitle.textContent; ovTitle.textContent = '自己加一首';
+  menu.hidden = true; editor.hidden = false;
+  nameIn.value = ''; scoreIn.value = ''; showCount();
+  try { nameIn.focus({ preventScroll: true }); } catch (e) {}
+}
+function closeEditor() {
+  if (editor.hidden) return;
+  stopTry(); editor.hidden = true; menu.hidden = false;
+  ovTitle.textContent = prevTitle || '月光鋼琴';
+}
+scoreIn.addEventListener('input', showCount);
+$('song-try').addEventListener('click', () => {
+  stopTry();
+  const notes = parseScore(scoreIn.value).slice(0, 16);
+  if (!notes.length) { msgEl.classList.add('err'); msgEl.textContent = '還沒有音符可以試聽，先寫幾個 1 到 7 的數字。'; return; }
+  notes.forEach((n, i) => tryTimers.push(setTimeout(() => note(n), i * 280)));
+});
+$('song-cancel').addEventListener('click', closeEditor);
+editor.addEventListener('submit', e => {
+  e.preventDefault();
+  const notes = parseScore(scoreIn.value);
+  if (notes.length < 4) {
+    msgEl.classList.add('err');
+    msgEl.textContent = `至少要 4 個音才能彈，現在讀到 ${notes.length} 個。`;
+    return;
+  }
+  if (custom.length >= 30) {
+    msgEl.classList.add('err');
+    msgEl.textContent = '最多存 30 首，先刪掉幾首自訂的再加。';
+    return;
+  }
+  const name = nameIn.value.trim().slice(0, 12) || `我的曲子 ${custom.length + 1}`;
+  custom.push({ name, score: scoreIn.value, notes });
+  store.set('piano.custom', custom.map(({ name, score }) => ({ name, score })));
+  closeEditor();
+  if (state === 'ready') ovTitle.textContent = '月光鋼琴';
+  renderPieces(); setPiece('c' + (custom.length - 1));
+  note(notes[0]);
+});
+renderPieces(); setPiece(melody);
 
 const target = () => rows.find(r => !r.hit);
 function playNext() {
-  const m = MELODIES[melody].notes;
+  const m = songOf(melody).notes;
   note(m[noteIdx % m.length]);
   noteIdx++;
 }
 function hit(r) {
   r.hit = true; r.hitT = 0; hits++;
   playNext();
-  if (state === 'ready') { state = 'play'; ov.hidden = true; speed = 1.7; }
+  if (state === 'ready') { closeEditor(); state = 'play'; ov.hidden = true; speed = 1.7; }
 }
 function lose(lane, r, missed) {
   state = 'fail'; failT = 1; fail = { lane, r, missed };
@@ -175,7 +344,7 @@ function gameOver() {
   const rec = hits > best;
   if (rec) { best = hits; store.set('piano.best', best); bestEl.textContent = best; }
   ovTitle.textContent = fail && fail.missed ? '漏了一個鍵' : '踩到白鍵了';
-  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `《${MELODIES[melody].name}》彈了 ${hits} 個音，最高 ${best} 個。換首曲子或直接再彈一次。`;
+  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `《${songOf(melody).name}》彈了 ${hits} 個音，最高 ${best} 個。換首曲子或直接再彈一次。`;
   ovBtn.textContent = '再彈一次';
   ov.hidden = false;
 }
@@ -200,6 +369,7 @@ stage.addEventListener('pointerdown', e => {
 ovBtn.addEventListener('click', () => { if (state === 'over') restart(); else ov.hidden = true; ovBtn.blur(); });
 const KEYMAP = { KeyD: 0, KeyF: 1, KeyJ: 2, KeyK: 3 };
 addEventListener('keydown', e => {
+  if (!editor.hidden || (e.target.closest && e.target.closest('input, textarea'))) return;
   if (e.code in KEYMAP && !e.repeat) {
     e.preventDefault();
     if (state === 'over') { if (performance.now() - overAt > 600) restart(); return; }
