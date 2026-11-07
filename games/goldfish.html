@@ -249,6 +249,7 @@ function resume() {
 function gameOver() {
   state = 'over'; overAt = performance.now();
   const n = Object.values(counts).reduce((a, b) => a + b, 0), rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'goldfish', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = score; store.set('goldfish.best', best); bestEl.textContent = best; }
   ovTitle.textContent = n ? `收攤囉，撈到 ${n} 條` : '收攤囉，一條都沒撈到';
   ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `這局 ${score} 分，最高紀錄 ${best} 分。` + (n ? '' : '下次放進水裡之後動作慢一點。');

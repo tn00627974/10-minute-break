@@ -259,6 +259,7 @@ function move(dir) {
   hud(gained > 0);
   if (!canMove()) {
     over = true; hud();
+    try { parent.postMessage({ type: 'arcade:score', game: 'mahjong2048', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
     const top = Math.max(...cells.map(t => t ? t.v : 0));
     ovTitle.textContent = '沒有牌可以動了';
     ovText.innerHTML = (score >= best && score > 0 ? '<span class="rec">新紀錄！</span>' : '') + `最大的牌是 ${top}（${NAMES[Math.log2(top)] || ''}），這局 ${score} 分。`;

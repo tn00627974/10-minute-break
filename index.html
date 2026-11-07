@@ -109,6 +109,45 @@ body.playing{overflow:hidden}
 button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .pbar button:focus-visible{outline-color:var(--sign-ink)}
 @media (max-width:420px){.pbtn.hide-sm{display:none}}
+
+/* online leaderboard */
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:.74rem;color:var(--muted);min-width:0}
+.top span{flex:none}
+.top b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;color:var(--accent)}
+.top b em{font-style:normal;font-family:var(--num);font-weight:600;color:var(--ink);margin-left:4px}
+.top b.none{font-weight:500;color:var(--muted)}
+.pbtn.rank{background:var(--card);border-color:var(--sign-ink)}
+.rank-panel{position:absolute;top:10px;right:max(12px,env(safe-area-inset-right,0px));z-index:4;width:min(340px,calc(100% - 24px));max-height:calc(100% - 20px);display:flex;flex-direction:column;border-radius:14px;background:var(--card);color:var(--ink);box-shadow:0 18px 40px rgba(0,0,0,.45);overflow:hidden}
+.rank-head{display:flex;align-items:center;gap:8px;padding:12px 12px 10px 16px;background:var(--sign);color:var(--sign-ink)}
+.rank-head h3{flex:1;min-width:0;margin:0;font-family:var(--display);font-weight:900;font-size:1rem;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-close{appearance:none;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--sign-ink);background:transparent;color:var(--sign-ink);font-size:1rem;cursor:pointer;display:grid;place-items:center;padding:0}
+.rank-tabs{display:flex;gap:6px;padding:10px 12px 0}
+.rank-tabs button{appearance:none;flex:1;border:1.5px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:5px 0;font:700 .8rem var(--body);cursor:pointer}
+.rank-tabs button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.rank-list{list-style:none;margin:0;padding:6px 8px 10px;overflow-y:auto}
+.rank-list li{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;align-items:baseline;gap:8px;padding:7px 8px;border-radius:8px;font-size:.9rem}
+.rank-list li:nth-child(odd){background:color-mix(in srgb,var(--line) 30%,transparent)}
+.rank-list li.me{outline:2px solid var(--accent);outline-offset:-2px}
+.rank-list .no{font-family:var(--num);font-weight:600;color:var(--muted);text-align:right}
+.rank-list li:nth-child(-n+3) .no{color:var(--accent)}
+.rank-list .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.rank-list .sc{font-family:var(--num);font-weight:600;font-variant-numeric:tabular-nums}
+.rank-note{padding:14px 16px 18px;font-size:.86rem;color:var(--muted);line-height:1.6}
+.rank-me{padding:8px 16px 12px;border-top:1px dashed var(--line);font-size:.8rem;color:var(--muted)}
+.dialog-back{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(10,14,24,.55)}
+.dialog{width:min(360px,100%);padding:18px;border-radius:16px;background:var(--card);color:var(--ink);box-shadow:0 20px 50px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:12px}
+.dialog h3{margin:0;font-family:var(--display);font-weight:900;font-size:1.15rem}
+.dialog p{margin:0;font-size:.88rem;color:var(--muted);line-height:1.6}
+.name-row{display:flex;gap:8px}
+.name-row input{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:10px;background:var(--board);color:var(--ink);font:700 1rem var(--body);padding:9px 12px}
+.name-row input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.dice{appearance:none;flex:none;width:42px;border:1.5px solid var(--line);border-radius:10px;background:transparent;color:var(--ink);cursor:pointer;font-size:.85rem;font-weight:700}
+.dialog .err{min-height:1.2em;color:#d9534f;font-size:.82rem}
+.dialog-actions{display:flex;gap:8px;justify-content:flex-end}
+.dialog-actions button{appearance:none;border-radius:999px;padding:9px 18px;font:700 .9rem var(--body);cursor:pointer}
+.btn-ghost{border:1.5px solid var(--line);background:transparent;color:var(--ink)}
+.btn-main{border:0;background:var(--accent);color:var(--on-accent)}
+.toast{position:fixed;left:50%;bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 14px));z-index:70;transform:translateX(-50%);max-width:calc(100% - 32px);padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--card);font-size:.88rem;font-weight:700;box-shadow:0 10px 24px rgba(0,0,0,.3)}
 @media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
 </style>
 
@@ -128,7 +167,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   </div>
 
   <div id="shelves"></div>
-  <p class="foot">最高紀錄只存在這台裝置的瀏覽器裡。在遊戲裡按右上角的「大廳」就能回來換一款。</p>
+  <p class="foot">「我的最高」只存在這台裝置的瀏覽器裡；「第一名」是線上排行榜，玩完會自動上傳你的成績。在遊戲裡按右上角的「排行榜」可以看前 20 名。</p>
 </div>
 
 <section class="player" id="player" hidden aria-label="遊戲畫面">
@@ -137,11 +176,36 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
     <h2 id="p-title"></h2>
     <button class="pbtn hide-sm" id="shuffle" type="button">換一款</button>
     <button class="pbtn" id="reload" type="button">重玩</button>
+    <button class="pbtn rank" id="rank-btn" type="button" aria-expanded="false" aria-controls="rank-panel">排行榜</button>
   </div>
   <div class="screen" id="screen">
     <div class="status" id="status"></div>
+    <section class="rank-panel" id="rank-panel" hidden aria-label="排行榜">
+      <div class="rank-head"><h3 id="rank-title">排行榜</h3><button class="rank-close" id="rank-close" type="button" aria-label="關閉排行榜">✕</button></div>
+      <div class="rank-tabs" id="rank-tabs" hidden></div>
+      <ol class="rank-list" id="rank-list"></ol>
+      <div class="rank-note" id="rank-note" hidden></div>
+      <div class="rank-me" id="rank-me"></div>
+    </section>
   </div>
 </section>
+
+<div class="dialog-back" id="name-dialog" hidden>
+  <form class="dialog" id="name-form" aria-labelledby="name-title">
+    <h3 id="name-title">上排行榜要取個名字</h3>
+    <p id="name-desc">之後的成績都會用這個名字上傳，排行榜上大家都看得到。</p>
+    <div class="name-row">
+      <input id="name-input" maxlength="12" autocomplete="nickname" aria-label="排行榜名字">
+      <button class="dice" id="name-dice" type="button" aria-label="換一個隨機名字">換</button>
+    </div>
+    <div class="err" id="name-err" aria-live="polite"></div>
+    <div class="dialog-actions">
+      <button class="btn-ghost" id="name-skip" type="button">先不要</button>
+      <button class="btn-main" type="submit">送出成績</button>
+    </div>
+  </form>
+</div>
+<div class="toast" id="toast" hidden role="status"></div>
 
 <script>
 (() => {
@@ -212,7 +276,8 @@ function renderShelves() {
       a.className = 'card'; a.href = '#' + g.id; a.dataset.id = g.id;
       a.innerHTML = `<span class="thumb"><img src="thumbs/${g.id}.jpg" alt="${g.title}的遊戲畫面" width="300" height="400" loading="lazy" decoding="async"></span>
         <span class="name">${g.title}</span><span class="desc">${g.desc}</span>
-        <span class="best"><span>最高紀錄</span><b></b></span><span class="last" hidden>上次玩</span>`;
+        <span class="top"><span>第一名</span><b class="none">載入中…</b></span>
+        <span class="best"><span>我的最高</span><b></b></span><span class="last" hidden>上次玩</span>`;
       a.addEventListener('click', e => { e.preventDefault(); go(g.id); });
       grid.appendChild(a);
     }
@@ -313,6 +378,166 @@ addEventListener('storage', e => { if (e.key && e.key.endsWith('.best')) refresh
 $('game-count').textContent = GAMES.length;
 renderChips(); renderShelves(); applyFilter(); refreshCards(); route();
 })();
+</script>
+
+<script type="module">
+/* ---------- 線上排行榜：卡片上的第一名、遊戲裡的前 20 名、上傳成績 ---------- */
+import { submitScore, getBoard, cleanName, isMock } from './leaderboard.js';
+
+const $ = id => document.getElementById(id);
+const local = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+const UNIT = { tower: '層', piano: '音', plane: '枝', 'mines-easy': '秒', 'mines-mid': '秒', 'mines-hard': '秒' };
+const MINES = [['mines-easy', '初級'], ['mines-mid', '中級'], ['mines-hard', '高級']];
+const isAsc = g => g.startsWith('mines-');
+const better = (g, a, b) => (isAsc(g) ? a < b : a > b);
+const boardOf = id => (id === 'mines' ? 'mines-easy' : id);     // 踩地雷的卡片顯示初級第一名
+const fmt = (g, v) => `${Number(v).toLocaleString()} ${UNIT[g] || '分'}`;
+
+/* ---------- 提示訊息 ---------- */
+let toastT = 0;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2800);
+}
+
+/* ---------- 第一次上榜時取名字 ---------- */
+const ADJ = ['勇敢的', '快手', '愛吃的', '夜市', '神準', '想睡的', '下課的', '認真的'];
+const NOUN = ['金魚', '護理師', '竹圈', '紙飛機', '黑貓', '鋼琴手', '地鼠', '珍珠'];
+const randomName = () => ADJ[Math.random() * ADJ.length | 0] + NOUN[Math.random() * NOUN.length | 0];
+function askName() {
+  return new Promise(resolve => {
+    const back = $('name-dialog'), input = $('name-input'), err = $('name-err'), form = $('name-form');
+    input.value = randomName(); err.textContent = ''; back.hidden = false;
+    setTimeout(() => { input.focus(); input.select(); }, 30);
+    const done = v => { back.hidden = true; form.onsubmit = null; $('name-skip').onclick = null; $('name-dice').onclick = null; resolve(v); };
+    $('name-dice').onclick = () => { input.value = randomName(); input.focus(); };
+    $('name-skip').onclick = () => done(null);
+    form.onsubmit = e => {
+      e.preventDefault();
+      const r = cleanName(input.value);
+      if (r.error) { err.textContent = r.error; return; }
+      done(r.name);
+    };
+  });
+}
+let asking = null;
+async function getName() {
+  const saved = local.get('arcade.name');
+  if (saved) return saved;
+  if (!asking) asking = askName().then(v => { asking = null; if (v) local.set('arcade.name', v); return v; });
+  return asking;
+}
+
+/* ---------- 卡片上的第一名（快取 3 分鐘，省 Firestore 讀取次數） ---------- */
+const TTL = 3 * 60e3;
+const readTops = () => { try { return JSON.parse(sessionStorage.getItem('arcade.tops')) || {}; } catch (e) { return {}; } };
+const saveTops = t => { try { sessionStorage.setItem('arcade.tops', JSON.stringify(t)); } catch (e) {} };
+function paintTop(id, entry, failed) {
+  const row = document.querySelector(`.card[data-id="${id}"] .top`);
+  if (!row) return;
+  const b = row.querySelector('b'), g = boardOf(id);
+  if (id === 'mines') row.firstElementChild.textContent = '初級第一';
+  if (failed) { b.className = 'none'; b.textContent = '暫時連不上'; return; }
+  if (!entry) { b.className = 'none'; b.textContent = '還沒人上榜'; return; }
+  b.className = ''; b.textContent = entry.name;
+  const em = document.createElement('em'); em.textContent = fmt(g, entry.score); b.append(em);
+  b.title = `${entry.name} ${fmt(g, entry.score)}`;
+}
+async function loadTops() {
+  const cache = readTops(), now = Date.now();
+  const ids = [...document.querySelectorAll('.card[data-id]')].map(c => c.dataset.id);
+  await Promise.all(ids.map(async id => {
+    const g = boardOf(id), c = cache[g];
+    if (c && now - c.at < TTL) { paintTop(id, c.top); return; }
+    try { const [top] = await getBoard(g, 1); cache[g] = { top: top || null, at: now }; paintTop(id, top); }
+    catch (e) { paintTop(id, null, true); }
+  }));
+  saveTops(cache);
+}
+
+/* ---------- 遊戲結束：收到分數就上傳 ---------- */
+addEventListener('message', async e => {
+  const frame = document.querySelector('#screen iframe');
+  if (!frame || e.source !== frame.contentWindow) return;          // 只收目前這款遊戲傳的
+  const d = e.data;
+  if (!d || d.type !== 'arcade:score' || typeof d.game !== 'string' || !Number.isInteger(d.score)) return;
+  if (!isAsc(d.game) && d.score <= 0) return;
+  const name = await getName();
+  if (!name) { toast('這次先不上傳，下次玩完會再問你'); return; }
+  try {
+    const r = await submitScore(d.game, name, d.score);
+    if (!r.improved) { toast(`沒超過你的最佳 ${fmt(d.game, r.best)}`); return; }
+    toast(`已上傳排行榜：${name} ${fmt(d.game, d.score)}`);
+    const cache = readTops(), c = cache[d.game];
+    if (c && (!c.top || better(d.game, d.score, c.top.score))) { c.top = { name, score: d.score }; saveTops(cache); }
+    if (!$('rank-panel').hidden && rankGame === d.game) showBoard(d.game);
+  } catch (err) {
+    console.warn('排行榜上傳失敗', err);
+    toast('排行榜暫時連不上，這次沒上傳成功');
+  }
+});
+
+/* ---------- 遊戲右上角的前 20 名 ---------- */
+let rankGame = null;
+function currentGameId() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  return id && document.querySelector(`.card[data-id="${CSS.escape(id)}"]`) ? id : null;
+}
+async function showBoard(g) {
+  rankGame = g;
+  const list = $('rank-list'), note = $('rank-note'), meEl = $('rank-me'), me = local.get('arcade.name');
+  list.innerHTML = ''; note.hidden = false; note.textContent = '載入中…'; meEl.textContent = '';
+  try {
+    const rows = await getBoard(g, 20);
+    if (rankGame !== g) return;
+    note.hidden = rows.length > 0;
+    if (!rows.length) note.textContent = '還沒有人上榜，玩一局搶第一名！';
+    rows.forEach((r, i) => {
+      const li = document.createElement('li');
+      if (r.name === me) li.className = 'me';
+      for (const [cls, text] of [['no', i + 1], ['nm', r.name], ['sc', fmt(g, r.score)]]) {
+        const s = document.createElement('span'); s.className = cls; s.textContent = text; li.append(s);
+      }
+      list.append(li);
+    });
+    const mine = rows.findIndex(r => r.name === me);
+    meEl.textContent = !me ? '玩完一局就能取名字上榜'
+      : mine >= 0 ? `你是第 ${mine + 1} 名（${me}）` : `你的名字是「${me}」，還沒進前 20 名`;
+    if (isMock) meEl.textContent += '・目前是本機測試資料';
+  } catch (e) {
+    if (rankGame !== g) return;
+    note.hidden = false; note.textContent = '排行榜暫時連不上，稍後再試。';
+  }
+}
+function openRank() {
+  const id = currentGameId();
+  if (!id) return;
+  $('rank-title').textContent = `${document.querySelector(`.card[data-id="${id}"] .name`).textContent}・前 20 名`;
+  const tabs = $('rank-tabs');
+  if (id === 'mines') {
+    let lv = 'easy'; try { lv = JSON.parse(local.get('mines.lv')) || 'easy'; } catch (e) {}
+    const start = MINES.some(([g]) => g === 'mines-' + lv) ? 'mines-' + lv : 'mines-easy';
+    tabs.innerHTML = '';
+    for (const [g, label] of MINES) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = label; b.setAttribute('aria-pressed', String(g === start));
+      b.onclick = () => { tabs.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); showBoard(g); };
+      tabs.append(b);
+    }
+    tabs.hidden = false; showBoard(start);
+  } else { tabs.hidden = true; showBoard(id); }
+  $('rank-panel').hidden = false; $('rank-btn').setAttribute('aria-expanded', 'true');
+}
+function closeRank() { $('rank-panel').hidden = true; $('rank-btn').setAttribute('aria-expanded', 'false'); rankGame = null; }
+$('rank-btn').addEventListener('click', () => ($('rank-panel').hidden ? openRank() : closeRank()));
+$('rank-close').addEventListener('click', closeRank);
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('rank-panel').hidden) closeRank(); });
+addEventListener('hashchange', () => { closeRank(); if (!currentGameId()) loadTops(); });
+
+loadTops();
 </script>
 
 </html>

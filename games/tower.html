@@ -222,6 +222,7 @@ function gameOver() {
   zoomT = Math.min(1, (H - GROUND - 90) / (top.y + BH + 40));
   camT = 0;
   const rec = floor > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'tower', score: floor }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = floor; store.set('tower.best', best); bestEl.textContent = best + 'F'; }
   ovTitle.textContent = floor === 0 ? '還沒蓋起來就倒了' : `停在第 ${floor} 層`;
   ovText.innerHTML = (rec && floor > 0 ? '<span class="rec">新紀錄！</span>' : '') + `完美對齊 ${perfects} 次，最高紀錄 ${best} 層。`;

@@ -251,6 +251,7 @@ function pause() {
 function gameOver() {
   state = 'over'; overAt = performance.now();
   const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'blueprint', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = score; store.set('blueprint.best', best); }
   bestEl.textContent = best;
   tone(200, .6, 'sawtooth', .05, .3);

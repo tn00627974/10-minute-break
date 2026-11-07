@@ -213,6 +213,7 @@ function gameOver() {
   state = 'over'; lock = true; overAt = performance.now();
   cards.forEach(c => { c.el.classList.add('up'); });
   const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'zodiac', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = score; store.set('zodiac.best', best); }
   tone(220, .5, 'triangle', .05);
   ovTitle.textContent = '時間到';

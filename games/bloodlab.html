@@ -181,6 +181,7 @@ function start() {
 function gameOver() {
   state = 'over'; overAt = performance.now(); meter = null;
   const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'bloodlab', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = score; store.set('bloodlab.best', best); bestEl.textContent = best; }
   ovTitle.textContent = '被客訴三次，下班了';
   ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `今天抽了 ${served} 位病人，得到 ${score} 分。最高紀錄 ${best} 分。`;

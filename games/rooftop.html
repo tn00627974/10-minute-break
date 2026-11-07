@@ -180,6 +180,7 @@ function die(reason) {
 function gameOver() {
   state = 'over'; overAt = performance.now();
   const sc = scoreNow(), rec = sc > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'rooftop', score: sc }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = sc; store.set('roofcat.best', best); bestEl.textContent = best; }
   ovTitle.textContent = why;
   ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `跑了 ${Math.floor(dist / 10)} 公尺，叼到 ${fishN} 條小魚乾，總分 ${sc}。最高 ${best} 分。`;

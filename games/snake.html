@@ -206,6 +206,7 @@ function die() {
 function gameOver() {
   state = 'over';
   const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'snake', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = score; store.set('snake.best', best); bestEl.textContent = pad4(best); }
   ovTitle.textContent = rec ? '新紀錄！' : '遊戲結束';
   ovText.textContent = `長度 ${snake.length}，得分 ${score}，到第 ${level()} 級。`;

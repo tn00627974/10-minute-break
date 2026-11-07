@@ -150,6 +150,7 @@ function crash() {
 function gameOver() {
   state = 'over'; overAt = performance.now();
   const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'plane', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = score; store.set('plane.best', best); bestEl.textContent = best; }
   ovTitle.textContent = score === 0 ? '一起飛就撞到了' : `飛過 ${score} 枝鉛筆`;
   ovText.innerHTML = (rec && score > 0 ? '<span class="rec">新紀錄！</span>' : '') + `最高紀錄是 ${best} 枝。再摺一架試試。`;

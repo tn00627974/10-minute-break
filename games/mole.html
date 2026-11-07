@@ -221,6 +221,7 @@ function end() {
   state = 'over'; overAt = performance.now();
   holes.forEach(h => { h.st = 'down'; render(h); });
   const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'mole', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = score; store.set('mole.best', best); }
   tone(523, .1, 'triangle'); setTimeout(() => tone(392, .25, 'triangle'), 120);
   ovTitle.textContent = rec ? '新紀錄！' : '時間到';

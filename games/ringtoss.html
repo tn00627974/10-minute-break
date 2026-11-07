@@ -234,6 +234,7 @@ function resume() {
 function gameOver() {
   state = 'over'; overAt = performance.now();
   const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'ringtoss', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = score; store.set('ringtoss.best', best); bestEl.textContent = best; }
   ovTitle.textContent = won.length ? `套到 ${won.length} 樣獎品` : '十個圈都沒套中';
   ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `這局 ${score} 分，最高紀錄 ${best} 分。` + (won.length ? '' : '試著讓竹圈從高一點的地方落下。');

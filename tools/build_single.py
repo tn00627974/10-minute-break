@@ -52,6 +52,11 @@ def main():
             + js_literal(thumbs) + ";\n</script>\n")
     i = out.index(MAIN_SCRIPT)
     out = out[:i + 1] + data + out[i + 1:]
+    lb = ROOT / "leaderboard.js"
+    if lb.exists():
+        # 排行榜模組也包進來，用 data: 網址載入，這樣單一檔案不需要旁邊的 leaderboard.js
+        b64 = base64.b64encode(lb.read_bytes()).decode()
+        out = out.replace("from './leaderboard.js'", f"from 'data:text/javascript;base64,{b64}'")
     OUT.write_text(out, encoding="utf-8")
     print(f"完成：{OUT.name}，{len(games)} 款遊戲，{OUT.stat().st_size // 1024} KB")
 

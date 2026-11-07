@@ -205,6 +205,7 @@ const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStar
 function gameOver() {
   state = 'over'; overAt = performance.now();
   const rec = score > best && score > 0;
+  try { parent.postMessage({ type: 'arcade:score', game: 'stardust', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = score; store.set('stardust.best', best); }
   ovKicker.textContent = 'SIGNAL LOST'; ovTitle.textContent = '防線失守';
   ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `最高紀錄 ${best} 分。`;

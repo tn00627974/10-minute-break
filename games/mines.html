@@ -247,6 +247,7 @@ function win() {
   grid.forEach((c, j) => { if (c.mine && !c.flag) { c.flag = true; paint(j); } });
   flags = L.m; hud();
   const t = Math.round(elapsed), prev = bests[lv], rec = prev == null || t < prev;
+  try { parent.postMessage({ type: 'arcade:score', game: 'mines-' + lv, score: t }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { bests[lv] = t; store.set('mines.best', bests); }
   [523, 659, 784, 1047].forEach((f, k) => setTimeout(() => tone(f, .14), k * 110));
   ovTitle.textContent = '整張圖測完了';

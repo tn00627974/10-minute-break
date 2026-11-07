@@ -232,6 +232,7 @@ function resume() { if (state !== 'paused') return; state = prevState; ov.hidden
 function gameOver() {
   state = 'over'; overAt = performance.now();
   const rec = score > best && score > 0;
+  try { parent.postMessage({ type: 'arcade:score', game: 'bricks', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = score; store.set('riso.best', best); }
   ovTitle.textContent = '沒接住';
   ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `印到第 ${level} 關，得到 ${score} 分。最高紀錄 ${best} 分。`;

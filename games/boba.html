@@ -192,6 +192,7 @@ function serve() {
 function gameOver() {
   state = 'over'; overAt = performance.now();
   const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'boba', score: score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = score; store.set('boba.best', best); }
   ovTitle.textContent = '今天收攤';
   ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `做了 ${cupN - 1} 杯，賺到 ${score} 分。最高紀錄 ${best} 分。`;
