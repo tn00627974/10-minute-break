@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>抽血櫃台</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700&family=Fredoka:wght@500;600&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: a hospital blood-draw station — the red LED queue board hangs on top, four numbered counters sit in a row, the waiting benches fill the bottom */
+:root{
+  --mint:#dcefe8;
+  --counter:#f6faf8;
+  --ink:#1f3b36;
+  --muted:#5e7a74;
+  --teal:#1f8a7a;
+  --warn:#d9534f;
+  --line:#bcd8cf;
+  --led:#ff4a3d;
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --num:"Fredoka","Chiron GoRound TC",system-ui,sans-serif;
+  color-scheme:light;
+}
+html{height:100%;box-sizing:border-box;background:var(--mint)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:var(--mint);color:var(--ink);font-family:var(--body);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-family:var(--display);font-weight:900;font-size:1.1rem;letter-spacing:.1em;white-space:nowrap;color:var(--teal)}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-family:var(--num);font-weight:600;font-size:1.2rem;font-variant-numeric:tabular-nums}
+.strikes{display:flex;gap:3px;height:1.32rem;align-items:center}
+.strikes i{width:12px;height:12px;border-radius:50%;background:var(--warn)}
+.strikes i.ok{background:transparent;box-shadow:inset 0 0 0 2px var(--line)}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;font-size:.9rem;display:grid;place-items:center;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:14px;overflow:hidden;touch-action:none;background:var(--counter);box-shadow:0 0 0 1px var(--line),0 14px 34px rgba(31,59,54,.12)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pop{position:absolute;left:0;right:0;top:56%;text-align:center;font:900 1.35rem var(--display);color:var(--teal);text-shadow:0 2px 0 #fff;opacity:0;pointer-events:none}
+.pop.bad{color:var(--warn)}
+.stage.shake{animation:shake .25s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.pop.show{animation:pop 1s ease-out}
+@keyframes pop{0%{opacity:0;transform:translateY(8px)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}
+.overlay{position:absolute;left:14px;right:14px;top:50%;transform:translateY(-50%);z-index:5;padding:18px;border-radius:14px;background:#fff;border:1px solid var(--line);box-shadow:0 16px 40px rgba(31,59,54,.2);display:flex;flex-direction:column;gap:10px;max-height:calc(100% - 28px);overflow-y:auto}
+.overlay h1{margin:0;font-family:var(--display);font-weight:900;font-size:1.45rem;letter-spacing:.08em;color:var(--teal)}
+.overlay p{margin:0;font-size:.92rem;line-height:1.75;max-width:40ch}
+.legend{display:flex;flex-direction:column;gap:6px;font-size:.86rem}
+.legend div{display:flex;align-items:center;gap:8px}
+.legend i{flex:none;width:34px;height:12px;border-radius:3px}
+.legend b{margin-left:auto;font-family:var(--num);font-weight:600}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:10px;background:var(--teal);color:#fff;font:900 1rem var(--display);padding:10px 20px;cursor:pointer;letter-spacing:.08em}
+.keys{font-size:.8rem;color:var(--muted)}
+.rec{color:var(--warn);font-weight:700}
+button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.stage.shake{animation:none}.pop.show{animation:fade 1s}@keyframes fade{0%,100%{opacity:0}15%,75%{opacity:1}}}
+</style>
+
+<header class="hud">
+  <div class="brand">抽血櫃台</div>
+  <div class="stat"><span>已抽</span><b id="served">0</b></div>
+  <div class="stat"><span>分數</span><b id="score">0</b></div>
+  <div class="stat"><span>客訴</span><div class="strikes" id="strikes"></div></div>
+  <div class="stat"><span>最高</span><b id="best">0</b></div>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <div class="pop" id="pop" aria-live="polite"></div>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">抽血櫃台</h1>
+    <p id="ov-text">你是唯一的抽血護理師。看上面的叫號燈，點坐著那個號碼的櫃台，跑過去準備抽血。計量條會來回跑，在黃區按下去分數最高，按完就換下一號。病人等太久會生氣離開，被客訴三次就下班。</p>
+    <div class="legend" id="legend">
+      <div><i style="background:#f6c431"></i>黃區：一針見血<b>+100</b></div>
+      <div><i style="background:#9fd8a8"></i>綠區：有抽到<b>+40</b></div>
+      <div><i style="background:#e9eeec"></i>其他：沒抽到<b>+0</b></div>
+      <div><i style="background:#d9534f"></i>點錯號碼<b>−30</b></div>
+    </div>
+    <div class="row"><button class="btn" id="ov-btn">開始看診</button><span class="keys" id="ov-keys">電腦：1–4 選櫃台，空白鍵按下</span></div>
+  </section>
+</main>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const servedEl = $('served'), scoreEl = $('score'), strikesEl = $('strikes'), bestEl = $('best'), muteBtn = $('mute'), pop = $('pop');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn'), ovKeys = $('ov-keys'), legend = $('legend');
+
+/* ---------- sound ---------- */
+let actx = null, muted = !!store.get('bloodlab.muted', false);
+function tone(f1, f2, dur = .1, type = 'sine', vol = .06) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+const sfx = {
+  ding: () => { tone(880, 880, .18, 'sine', .06); setTimeout(() => tone(660, 660, .3, 'sine', .06), 180); },   // the queue-board chime
+  step: () => tone(520, 420, .05, 'triangle', .04),
+  perfect: () => { [1047, 1319, 1568, 2093].forEach((f, i) => setTimeout(() => tone(f, f, .1, 'triangle', .07), i * 45)); setTimeout(() => tone(2637, 2637, .35, 'sine', .04), 180); },
+  good: () => { tone(784, 784, .08, 'triangle', .07); setTimeout(() => tone(1175, 1175, .14, 'triangle', .06), 60); },
+  miss: () => tone(240, 170, .25, 'square', .045),
+  angry: () => tone(200, 120, .45, 'sawtooth', .05)
+};
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('bloodlab.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) sfx.ding(); });
+function showPop(t, bad) { pop.textContent = t; pop.classList.toggle('bad', !!bad); pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show'); }
+
+/* ---------- layout: queue board on top, four counters, waiting benches below ---------- */
+const W = 400, N = 4, CW = W / N;
+let H = 640, S = 1, DPR = 1, deskY = 200, benchY = 480;
+function fit() {
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S;
+  deskY = Math.max(150, H * .36); benchY = Math.max(deskY + 170, H * .78);
+  METER.y = deskY + 150;
+}
+const counterX = i => CW * i + CW / 2;
+const SKINS = ['#f3cfb3', '#e8b995', '#d8a27c', '#f6dcc6'];
+const HAIRS = ['#2b2b2b', '#3b2a20', '#4a2b1a', '#d8d8d8', '#1e1e1e', '#6b3d22'];
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ---------- state ---------- */
+let state = 'ready', counters = [], lobby = [], leaving = [], floats = [];
+let nextNo = 1, callNo = 1, score = 0, served = 0, strikes = 0, combo = 0, elapsed = 0, arriveT = 0;
+let nurse = { x: W / 2, tx: W / 2, at: -1 }, meter = null, overAt = 0, rushAt = 0;
+const RUSH = [45, 100, 150], RUSH_TEXT = ['門診人潮變多了', '午休前大排長龍', '全院都來抽血了'];
+let best = store.get('bloodlab.best', 0);
+bestEl.textContent = best;
+const pad3 = n => String(n).padStart(3, '0');
+
+function makePatient() {
+  return { no: nextNo++, skin: SKINS[Math.floor(Math.random() * SKINS.length)], hair: HAIRS[Math.floor(Math.random() * HAIRS.length)],
+    kid: Math.random() < .2, patience: 1, face: 'calm', bob: Math.random() * 6 };
+}
+function hud() {
+  servedEl.textContent = served; scoreEl.textContent = score;
+  strikesEl.innerHTML = [0, 1, 2].map(i => `<i class="${i < strikes ? '' : 'ok'}"></i>`).join('');
+}
+function reset() {
+  counters = Array.from({ length: N }, () => ({ p: null, fillT: 0 }));
+  lobby = []; leaving = []; floats = [];
+  nextNo = 1; callNo = 1; score = 0; served = 0; strikes = 0; combo = 0; elapsed = 0; arriveT = 0;
+  nurse = { x: W / 2, tx: W / 2, at: -1 }; meter = null; judge = null; rushAt = 0;
+  for (let i = 0; i < 4; i++) lobby.push(makePatient());
+  hud();
+}
+function start() {
+  if (state === 'play') return;
+  reset(); state = 'play'; ov.hidden = true; ovBtn.blur(); sfx.ding();
+}
+function gameOver() {
+  state = 'over'; overAt = performance.now(); meter = null;
+  const rec = score > best;
+  if (rec) { best = score; store.set('bloodlab.best', best); bestEl.textContent = best; }
+  ovTitle.textContent = '被客訴三次，下班了';
+  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `今天抽了 ${served} 位病人，得到 ${score} 分。最高紀錄 ${best} 分。`;
+  legend.hidden = true; ovBtn.textContent = '明天再上班'; ovKeys.textContent = '';
+  ov.hidden = false;
+}
+
+// difficulty: patients come faster, the meter runs faster and the yellow zone shrinks
+const level = () => Math.min(1, elapsed / 150);
+const patienceTime = () => 22 - level() * 9;
+
+/* ---------- the timing meter that appears when the needle goes in ---------- */
+const METER = { x: 24, w: W - 48, y: 0 };   // y follows the layout, set in fit()
+// rhythm-game style judgement: the word pops in big, a ring bursts out of the needle mark
+const JUDGE = {
+  perfect: { text: 'PERFECT', sub: '一針見血', fill: '#f6c431', edge: '#a8740a', glow: 'rgba(246,196,49,.75)' },
+  good:    { text: 'GOOD',    sub: '有抽到',   fill: '#5cc27a', edge: '#23744a', glow: 'rgba(92,194,122,.6)' },
+  miss:    { text: 'MISS',    sub: '沒抽到',   fill: '#b9c3c0', edge: '#6d7a76', glow: 'rgba(0,0,0,0)' }
+};
+let judge = null;
+function showJudge(kind, x, y) {
+  const n = kind === 'perfect' ? 18 : kind === 'good' ? 8 : 0;
+  judge = { kind, x, y, t: 0, combo, sparks: Array.from({ length: n }, () => { const a = Math.random() * Math.PI * 2, v = 90 + Math.random() * 160; return { vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40 }; }) };
+  if (kind === 'miss') { stage.classList.remove('shake'); void stage.offsetWidth; stage.classList.add('shake'); }
+}
+function drawJudge() {
+  if (!judge) return;
+  const j = judge, J = JUDGE[j.kind], t = j.t;
+  // the ring
+  if (j.kind !== 'miss') {
+    ctx.strokeStyle = J.fill; ctx.globalAlpha = Math.max(0, 1 - t / .45); ctx.lineWidth = 4 * (1 - t / .45) + 1;
+    ctx.beginPath(); ctx.arc(j.x, j.y, 10 + t * 160, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = J.fill;
+    for (const s of j.sparks) { const k = t * (1 - t * .6); ctx.beginPath(); ctx.arc(j.x + s.vx * k, j.y + s.vy * k + 120 * t * t, 3 * (1 - t), 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
+  // the word: overshoot in, hold, drift up and fade
+  const sc = t < .1 ? .4 + t / .1 * .9 : t < .2 ? 1.3 - (t - .1) / .1 * .3 : 1;
+  const a = t < .55 ? 1 : Math.max(0, 1 - (t - .55) / .3), y = METER.y + 4 - Math.max(0, t - .55) * 40;
+  const tx = W / 2;   // the word sits where the meter just was; the ring stays on the needle mark
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(tx, y); ctx.scale(sc, sc); ctx.rotate(j.kind === 'miss' ? .06 : -.06);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = 'italic 600 40px Fredoka, sans-serif';
+  ctx.shadowColor = J.glow; ctx.shadowBlur = 18;
+  ctx.lineWidth = 7; ctx.strokeStyle = '#ffffff'; ctx.strokeText(J.text, 0, 0);
+  ctx.shadowBlur = 0; ctx.lineWidth = 2.5; ctx.strokeStyle = J.edge; ctx.strokeText(J.text, 0, 0);
+  ctx.fillStyle = J.fill; ctx.fillText(J.text, 0, 0);
+  ctx.font = '900 13px "Chiron GoRound TC", sans-serif'; ctx.fillStyle = J.edge;
+  ctx.fillText(j.kind === 'perfect' && j.combo > 1 ? `${J.sub}　COMBO ×${j.combo}` : J.sub, 0, 30);
+  ctx.restore();
+}
+function openMeter(i) {
+  const L = level(), yw = .16 - L * .08, gw = yw + .2;
+  const yc = rand(.2 + gw / 2, .8 - gw / 2);
+  meter = { i, pos: 0, dir: 1, speed: .9 + L * 1.1, y0: yc - yw / 2, y1: yc + yw / 2, g0: yc - gw / 2, g1: yc + gw / 2, wait: .25 };
+}
+function pressMeter() {
+  if (!meter || meter.wait > 0) return;
+  const m = meter, c = counters[m.i], p = c.p, x = m.pos;
+  let pts = 0, kind = 'miss', bad = true;
+  if (x >= m.y0 && x <= m.y1) { combo++; pts = 100 + Math.min(combo - 1, 5) * 20; kind = 'perfect'; bad = false; sfx.perfect(); p.face = 'happy'; }
+  else if (x >= m.g0 && x <= m.g1) { combo = 0; pts = 40; kind = 'good'; bad = false; sfx.good(); p.face = 'calm'; }
+  else { combo = 0; sfx.miss(); p.face = 'ouch'; }
+  score += pts; served++;
+  floats.push({ x: counterX(m.i), y: deskY - 40, text: pts ? '+' + pts : '+0', t: 0, bad });
+  showJudge(kind, METER.x + METER.w * x, METER.y + 11);
+  c.fillT = pts ? .7 : .01;    // a short moment for the tube to fill, then the patient leaves
+  meter = null; callNo = p.no + 1; syncCall();
+  hud();
+}
+// checked every frame: call the smallest number still waiting; with nobody waiting, call the next number to be handed out
+function syncCall() {
+  const waiting = [...counters.filter(c => c.p && c.fillT <= 0).map(c => c.p.no), ...lobby.map(p => p.no)].filter(n => n >= callNo);
+  const want = waiting.length ? Math.min(...waiting) : nextNo;
+  if (want !== callNo) { callNo = want; if (waiting.length) sfx.ding(); }
+}
+
+/* ---------- input ---------- */
+function pickCounter(i) {
+  if (state !== 'play') return;
+  if (meter) { pressMeter(); return; }
+  const c = counters[i];
+  if (!c.p || c.fillT > 0) return;
+  if (c.p.no !== callNo) {
+    score = Math.max(0, score - 30); combo = 0; hud(); sfx.miss();
+    floats.push({ x: counterX(i), y: deskY - 40, text: '-30', t: 0, bad: true });
+    showPop(`還沒輪到 ${pad3(c.p.no)} 號`, true);
+    return;
+  }
+  nurse.tx = counterX(i); nurse.at = i; sfx.step();
+  openMeter(i);
+}
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('.overlay')) return;
+  e.preventDefault();
+  if (state === 'over') { if (performance.now() - overAt > 900) start(); return; }
+  if (state !== 'play') return;
+  if (meter) { pressMeter(); return; }
+  const r = stage.getBoundingClientRect(), x = (e.clientX - r.left) / S, y = (e.clientY - r.top) / S;
+  if (y > 40 && y < benchY - 20) pickCounter(Math.max(0, Math.min(N - 1, Math.floor(x / CW))));
+});
+ovBtn.addEventListener('click', () => { if (state === 'over' && performance.now() - overAt < 600) return; start(); });
+addEventListener('keydown', e => {
+  if (state === 'play') {
+    if (/^Digit[1-4]$/.test(e.code)) { pickCounter(+e.code.slice(5) - 1); return; }
+    if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (!e.repeat) pressMeter(); return; }
+  }
+  if ((e.code === 'Space' || e.code === 'Enter') && !ov.hidden && !(e.target.closest && e.target.closest('button'))) { e.preventDefault(); ovBtn.click(); }
+});
+
+/* ---------- update ---------- */
+function update(dt) {
+  for (const f of floats) f.t += dt;
+  if (judge) { judge.t += dt; if (judge.t > .9) judge = null; }
+  floats = floats.filter(f => f.t < 1);
+  for (const l of leaving) { l.t += dt; l.x += l.vx * dt; }
+  leaving = leaving.filter(l => l.t < 1.4);
+  nurse.x += (nurse.tx - nurse.x) * Math.min(1, dt * 12);
+  if (state !== 'play') return;
+  elapsed += dt;
+  // new arrivals take a number at the registration desk
+  arriveT -= dt;
+  if (arriveT <= 0) {
+    // the clinic gets busier: shorter gaps, and after a while people start arriving in pairs and threes
+    const group = elapsed > 100 && Math.random() < .35 ? 3 : elapsed > 45 && Math.random() < .4 ? 2 : 1;
+    for (let g = 0; g < group && lobby.length < 10; g++) lobby.push(makePatient());
+    arriveT = Math.max(.9, 3.6 - elapsed * .018) * rand(.75, 1.25);
+  }
+  if (rushAt < RUSH.length && elapsed >= RUSH[rushAt]) { showPop(RUSH_TEXT[rushAt]); rushAt++; }
+  // free counters are filled from the front of the waiting line, each into a random free seat
+  const free = counters.map((c, i) => (!c.p ? i : -1)).filter(i => i >= 0);
+  if (free.length && lobby.length) {
+    const i = free[Math.floor(Math.random() * free.length)];
+    counters[i].p = lobby.shift(); counters[i].p.patience = 1;
+  }
+  if (meter) {
+    if (meter.wait > 0) meter.wait -= dt;
+    else {
+      meter.pos += meter.dir * meter.speed * dt;
+      if (meter.pos > 1) { meter.pos = 1; meter.dir = -1; } else if (meter.pos < 0) { meter.pos = 0; meter.dir = 1; }
+    }
+  }
+  counters.forEach((c, i) => {
+    if (!c.p) return;
+    if (c.fillT > 0) {
+      c.fillT -= dt;
+      if (c.fillT <= 0) { leaving.push({ ...c.p, x: counterX(i), vx: i < 2 ? -120 : 120, t: 0, happy: c.p.face !== 'ouch' }); c.p = null; c.fillT = 0; }
+      return;
+    }
+    if (meter && meter.i === i) return;   // the patient being drawn doesn't lose patience
+    c.p.patience -= dt / patienceTime();
+    if (c.p.patience < .35 && c.p.face !== 'ouch') c.p.face = 'grumpy';
+    if (c.p.patience <= 0) {
+      strikes++; combo = 0; sfx.angry();
+      showPop(`${pad3(c.p.no)} 號等太久走掉了`, true);
+      leaving.push({ ...c.p, x: counterX(i), vx: i < 2 ? -160 : 160, t: 0, angry: true });
+      const gone = c.p.no; c.p = null;
+      if (gone === callNo) { callNo++; syncCall(); }
+      hud();
+      if (strikes >= 3) gameOver();
+    }
+  });
+  for (const p of lobby) p.patience = Math.max(.35, p.patience - dt / 60);
+  if (state === 'play') syncCall();
+}
+
+/* ---------- draw ---------- */
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function face(p, x, y, r) {
+  ctx.fillStyle = p.skin; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = p.hair; ctx.beginPath(); ctx.arc(x, y - r * .2, r * 1.02, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+  if (p.kid) { ctx.beginPath(); ctx.arc(x - r, y - r * .1, r * .28, 0, Math.PI * 2); ctx.arc(x + r, y - r * .1, r * .28, 0, Math.PI * 2); ctx.fill(); }
+  const f = p.face;
+  ctx.fillStyle = '#2a2a2a'; ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = Math.max(1, r * .09);
+  if (f === 'ouch') for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + s * r * .45, y - r * .05); ctx.lineTo(x + s * r * .2, y + r * .1); ctx.lineTo(x + s * r * .45, y + r * .25); ctx.stroke(); }
+  else for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(x + s * r * .35, y + r * .05, r * .1, 0, Math.PI * 2); ctx.fill(); }
+  if (f === 'grumpy' || p.angry) for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + s * r * .55, y - r * .3); ctx.lineTo(x + s * r * .15, y - r * .15); ctx.stroke(); }
+  ctx.strokeStyle = '#7a3a32'; ctx.beginPath();
+  if (f === 'happy' || p.happy) ctx.arc(x, y + r * .3, r * .28, .15 * Math.PI, .85 * Math.PI);
+  else if (f === 'grumpy' || f === 'ouch' || p.angry) ctx.arc(x, y + r * .7, r * .25, 1.2 * Math.PI, 1.8 * Math.PI);
+  else { ctx.moveTo(x - r * .2, y + r * .45); ctx.lineTo(x + r * .2, y + r * .45); }
+  ctx.stroke();
+}
+function drawBoard(t) {
+  ctx.fillStyle = '#1b1f22'; rr(10, 8, W - 20, 44, 8); ctx.fill();
+  ctx.fillStyle = '#5e7a74'; ctx.font = '700 11px "Noto Sans TC", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('抽血叫號', 22, 30);
+  const blink = state === 'play' && (t * 2) % 2 < 1.7;
+  ctx.fillStyle = blink ? '#ff4a3d' : '#7a2420'; ctx.font = '400 30px "Share Tech Mono", ui-monospace, monospace'; ctx.textAlign = 'center';
+  ctx.shadowColor = '#ff4a3d'; ctx.shadowBlur = blink ? 10 : 0;
+  ctx.fillText(pad3(callNo), W / 2, 31); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#9aa6a2'; ctx.font = '700 11px "Noto Sans TC", sans-serif'; ctx.textAlign = 'right';
+  ctx.fillText(`已掛號到 ${pad3(Math.max(0, nextNo - 1))} 號`, W - 22, 30);
+}
+function drawCounter(i, t) {
+  const x = CW * i, cx = counterX(i), c = counters[i], called = c.p && c.p.no === callNo && !meter;
+  // window number and partition
+  ctx.fillStyle = called ? 'rgba(246,196,49,.18)' : 'rgba(31,138,122,.04)'; ctx.fillRect(x + 3, 60, CW - 6, deskY - 30);
+  ctx.fillStyle = '#c9dbd5'; ctx.fillRect(x, 60, 2, deskY + 60);
+  ctx.fillStyle = '#1f8a7a'; rr(cx - 16, 66, 32, 20, 6); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = '600 13px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`${i + 1}`, cx, 77);
+  if (c.p) {
+    const p = c.p, py = deskY - 28 + Math.sin(t * 2 + p.bob) * 1.2;
+    ctx.fillStyle = p.kid ? '#f2a6b8' : '#8fb4d9'; rr(cx - 22, py + 12, 44, 40, 12); ctx.fill();
+    face(p, cx, py, p.kid ? 14 : 16);
+    // number slip
+    ctx.fillStyle = '#fff'; rr(cx - 22, py - 50, 44, 20, 4); ctx.fill();
+    ctx.strokeStyle = called ? '#f6c431' : '#c9dbd5'; ctx.lineWidth = called ? 2.5 : 1; ctx.stroke();
+    ctx.fillStyle = '#1f3b36'; ctx.font = '600 13px Fredoka, sans-serif'; ctx.fillText(pad3(p.no), cx, py - 40);
+    // patience bar
+    if (!(meter && meter.i === i) && c.fillT <= 0) {
+      const w = CW - 26, k = Math.max(0, p.patience);
+      ctx.fillStyle = '#e6eeeb'; rr(cx - w / 2, deskY + 64, w, 6, 3); ctx.fill();
+      ctx.fillStyle = k > .5 ? '#1f8a7a' : k > .25 ? '#f6c431' : '#d9534f'; rr(cx - w / 2, deskY + 64, w * k, 6, 3); ctx.fill();
+    }
+  } else {
+    ctx.fillStyle = '#9fb8b1'; ctx.font = '700 11px "Noto Sans TC", sans-serif'; ctx.fillText('空位', cx, deskY - 20);
+  }
+  // desk with an arm pillow
+  ctx.fillStyle = '#ffffff'; rr(x + 6, deskY + 20, CW - 12, 36, 6); ctx.fill();
+  ctx.strokeStyle = '#c9dbd5'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#6fa8dc'; rr(cx - 26, deskY + 26, 52, 18, 8); ctx.fill();
+  if (c.p) { ctx.fillStyle = c.p.skin; rr(cx - 30, deskY + 30, 60, 10, 5); ctx.fill(); }
+  if (c.p && c.fillT > 0) {
+    // the tube filling after a good draw
+    const k = 1 - c.fillT / .7;
+    ctx.fillStyle = '#fff'; rr(cx + 22, deskY - 6, 10, 32, 5); ctx.fill(); ctx.strokeStyle = '#c9dbd5'; ctx.stroke();
+    ctx.fillStyle = '#8e1b2a'; ctx.fillRect(cx + 23, deskY + 26 - 28 * k, 8, 28 * k);
+    ctx.fillStyle = '#a77fd6'; ctx.fillRect(cx + 21, deskY - 9, 12, 5);
+  }
+}
+function drawNurse() {
+  const x = nurse.x, y = deskY + 108;
+  ctx.fillStyle = 'rgba(31,59,54,.12)'; ctx.beginPath(); ctx.ellipse(x, y + 26, 20, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffffff'; rr(x - 18, y - 4, 36, 30, 10); ctx.fill(); ctx.strokeStyle = '#c9dbd5'; ctx.stroke();
+  ctx.fillStyle = '#1f8a7a'; ctx.fillRect(x - 18, y + 8, 36, 4);
+  face({ skin: '#f3cfb3', hair: '#2b2b2b', face: 'calm' }, x, y - 16, 13);
+  ctx.fillStyle = '#ffffff'; rr(x - 9, y - 34, 18, 7, 2); ctx.fill();
+  ctx.fillStyle = '#d9534f'; ctx.fillRect(x - 1.5, y - 33, 3, 5); ctx.fillRect(x - 3.5, y - 31, 7, 1.5);
+}
+function drawMeter() {
+  if (!meter) return;
+  const m = meter, bw = METER.w, bx = METER.x, by = METER.y;
+  ctx.fillStyle = 'rgba(255,255,255,.96)'; rr(bx - 12, by - 34, bw + 24, 76, 12); ctx.fill();
+  ctx.strokeStyle = '#1f8a7a'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#1f3b36'; ctx.font = '700 12px "Noto Sans TC", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`${pad3(counters[m.i].p.no)} 號進針中：在黃區按下！`, W / 2, by - 18);
+  ctx.fillStyle = '#e9eeec'; rr(bx, by, bw, 22, 6); ctx.fill();
+  ctx.fillStyle = '#9fd8a8'; ctx.fillRect(bx + bw * m.g0, by, bw * (m.g1 - m.g0), 22);
+  ctx.fillStyle = '#f6c431'; ctx.fillRect(bx + bw * m.y0, by, bw * (m.y1 - m.y0), 22);
+  const px = bx + bw * m.pos;
+  ctx.fillStyle = '#1f3b36'; ctx.beginPath(); ctx.moveTo(px, by - 3); ctx.lineTo(px - 7, by - 12); ctx.lineTo(px + 7, by - 12); ctx.fill();
+  ctx.fillRect(px - 1.5, by - 3, 3, 28);
+}
+function drawBenches(t) {
+  ctx.fillStyle = '#e7efec'; ctx.fillRect(0, benchY - 16, W, H - benchY + 16);
+  ctx.fillStyle = '#d4e2dd'; ctx.fillRect(0, benchY - 16, W, 2);
+  ctx.fillStyle = '#5e7a74'; ctx.font = '700 11px "Noto Sans TC", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(`候診 ${lobby.length} 人`, 12, benchY - 4);
+  ctx.fillStyle = '#c3d6cf'; rr(10, benchY + 40, W - 20, 10, 5); ctx.fill();
+  const gap = Math.min(52, (W - 60) / Math.max(1, lobby.length - 1));
+  lobby.forEach((p, i) => {
+    const x = 34 + i * gap, y = benchY + 26 + Math.sin(t * 2 + p.bob) * 1;
+    ctx.fillStyle = p.kid ? '#f2a6b8' : '#8fb4d9'; rr(x - 13, y + 8, 26, 22, 8); ctx.fill();
+    face(p, x, y, 11);
+    ctx.fillStyle = '#5e7a74'; ctx.font = '600 10px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(pad3(p.no), x, y + 38);
+  });
+}
+function draw(t) {
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0);
+  ctx.fillStyle = '#f6faf8'; ctx.fillRect(0, 0, W, H);
+  drawBoard(t);
+  for (let i = 0; i < N; i++) drawCounter(i, t);
+  for (const l of leaving) { ctx.globalAlpha = Math.max(0, 1 - l.t / 1.4); face(l, l.x, deskY - 28, 15); ctx.globalAlpha = 1; }
+  drawNurse();
+  drawBenches(t);
+  drawMeter();
+  drawJudge();
+  ctx.textAlign = 'center'; ctx.font = '600 18px Fredoka, sans-serif';
+  for (const f of floats) { ctx.fillStyle = f.bad ? `rgba(217,83,79,${1 - f.t})` : `rgba(31,138,122,${1 - f.t})`; ctx.fillText(f.text, f.x, f.y - f.t * 30); }
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
+  update(dt); draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+reset();
+// opening view: a few patients already seated
+[0, 2, 3].forEach(i => { counters[i].p = lobby.shift(); });
+requestAnimationFrame(frame);
+})();
+</script>

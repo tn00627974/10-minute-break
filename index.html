@@ -1,4 +1,9 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>下課十分鐘</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -111,7 +116,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <header class="sign">
     <span class="bell">噹——噹——噹——</span>
     <h1>下課十分鐘</h1>
-    <p>多款小遊戲掛在這面牆上，挑一款就開玩，玩到上課鐘響。手機用手指，電腦用鍵盤或滑鼠。</p>
+    <p><span id="game-count">16</span> 款小遊戲掛在這面牆上，挑一款就開玩，玩到上課鐘響。手機用手指，電腦用鍵盤或滑鼠。</p>
   </header>
 
   <div class="tools">
@@ -156,12 +161,15 @@ const GAMES = [
       for (const [k, n] of [['hard', '高級'], ['mid', '中級'], ['easy', '初級']]) if (b[k] != null) return `${n} ${b[k]} 秒`;
       return null;
     } },
+  { id: 'bloodlab',    title: '抽血櫃台',   cat: '反應', desc: '四個櫃台照叫號抽血，計量條停在黃區分數最高。', best: score('bloodlab.best', '分') },
   { id: 'blueprint',   title: '藍圖方塊',   cat: '益智', desc: '排滿一整列就消掉，每消十行升一級。', best: score('blueprint.best', '分') },
   { id: 'tower',       title: '疊疊塔',     cat: '反應', desc: '點一下放下滑動的樓層，對得越準蓋得越高。', best: score('tower.best', '層') },
   { id: 'snake',       title: '掌機貪食蛇', cat: '反應', desc: '滑動轉彎，每吃五顆出現限時大餌。', best: score('snake.best', '分') },
   { id: 'mole',        title: '草皮打地鼠', cat: '反應', desc: '45 秒一局，金色地鼠多給分，炸彈別敲。', best: score('mole.best', '分') },
   { id: 'piano',       title: '月光鋼琴',   cat: '反應', desc: '只踩黑鍵，每點一下彈出曲子的下一個音。', best: score('piano.best', '個音') },
   { id: 'boba',        title: '珍珠接接樂', cat: '反應', desc: '拖杯子接珍珠，裝滿一杯換口味，避開辣椒。', best: score('boba.best', '分') },
+  { id: 'goldfish',    title: '夜市撈金魚', cat: '反應', desc: '慢慢滑到金魚底下再撈，紙網泡太久會破。', best: score('goldfish.best', '分') },
+  { id: 'ringtoss',    title: '夜市套圈圈', cat: '動作', desc: '往下拉再放開丟竹圈，整個套住獎品才算。', best: score('ringtoss.best', '分') },
   { id: 'bricks',      title: '套色打磚塊', cat: '動作', desc: '孔版印刷風打磚塊，四種道具輪流掉。', best: score('riso.best', '分') },
   { id: 'stardust',    title: '星塵防線',   cat: '動作', desc: '拖曳移動、自動開火，撐到母艦出現。', best: score('stardust.best', '分') },
   { id: 'plane',       title: '筆記本紙飛機', cat: '動作', desc: '點一下往上飄，從鉛筆之間的縫鑽過去。', best: score('plane.best', '枝') },
@@ -302,8 +310,9 @@ $('random').addEventListener('click', () => go(pickRandom()));
 addEventListener('hashchange', route);
 addEventListener('storage', e => { if (e.key && e.key.endsWith('.best')) refreshCards(); });
 
+$('game-count').textContent = GAMES.length;
 renderChips(); renderShelves(); applyFilter(); refreshCards(); route();
 })();
 </script>
 
-</body></html>
+</html>

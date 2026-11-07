@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>夜市撈金魚</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Fredoka:wght@500;600&display=swap">
+<style>
+/* Layout: a night-market stall seen from above — the blue plastic tub fills the frame, the catch bowl sits on the counter below it, the stall's hand-lettered kraft board carries the rules and the price list */
+:root{
+  --night:#17121f;
+  --tarp:#241c2c;
+  --lamp:#ffb648;
+  --lantern:#e23b2e;
+  --kraft:#dcbd8c;
+  --marker:#2b1d14;
+  --text:#fff3e0;
+  --muted:#c4b3c6;
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --hand:"LXGW WenKai TC","Kaiti TC","DFKai-SB","STKaiti",serif;
+  --num:"Fredoka","Chiron GoRound TC",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--night)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:radial-gradient(120% 50% at 50% 0%,#3a2232,var(--night) 70%);
+  color:var(--text);font-family:var(--display);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.1rem;letter-spacing:.1em;white-space:nowrap;color:var(--lamp);text-shadow:0 0 12px rgba(255,182,72,.45)}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-family:var(--num);font-weight:600;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.poi{display:flex;gap:4px;height:1.375rem;align-items:center}
+.poi i{position:relative;width:15px;height:15px;border-radius:50%;border:2.5px solid var(--lantern);background:rgba(255,255,255,.85)}
+.poi i::after{content:"";position:absolute;right:-6px;bottom:-5px;width:7px;height:3px;border-radius:2px;background:var(--lantern);transform:rotate(45deg)}
+.poi i.used{opacity:.28;background:transparent}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid #4a3a52;background:transparent;color:var(--text);cursor:pointer;font-size:.9rem;display:grid;place-items:center;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:14px;overflow:hidden;touch-action:none;background:var(--tarp);box-shadow:0 0 0 1px #3a2c40,0 20px 50px rgba(0,0,0,.5)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pop{position:absolute;left:0;right:0;top:32%;text-align:center;font:900 1.4rem var(--display);color:var(--text);text-shadow:0 2px 0 rgba(0,0,0,.35),0 0 14px rgba(0,0,0,.4);opacity:0;pointer-events:none;letter-spacing:.06em}
+.pop.show{animation:pop 1.1s ease-out}
+@keyframes pop{0%{opacity:0;transform:translateY(8px) scale(.95)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-12px)}}
+/* the stall's cardboard sign */
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%) rotate(-1deg);z-index:5;padding:20px 18px 16px;background:var(--kraft);color:var(--marker);font-family:var(--hand);box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px;max-height:calc(100% - 32px);overflow-y:auto}
+.overlay::before{content:"";position:absolute;left:50%;top:-9px;width:96px;height:22px;transform:translateX(-50%) rotate(2deg);background:rgba(255,255,255,.5);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.overlay h1{margin:0;font-family:var(--display);font-weight:900;font-size:1.55rem;letter-spacing:.08em;color:var(--lantern)}
+.overlay p{margin:0;font-size:1rem;line-height:1.7;max-width:38ch}
+.prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px;padding:8px 0;border-top:2px dashed rgba(43,29,20,.35);border-bottom:2px dashed rgba(43,29,20,.35);font-size:.98rem}
+.prices div{display:flex;align-items:center;gap:8px;min-width:0}
+.prices i{flex:none;width:18px;height:11px;border-radius:50%}
+.prices b{margin-left:auto;font-family:var(--num);font-weight:600;font-variant-numeric:tabular-nums}
+.f-red{background:#f2552c}.f-koh{background:linear-gradient(90deg,#fff 50%,#e8432a 50%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.f-blk{background:#1d1a22}.f-big{background:#e8432a;width:24px!important;height:14px!important}.f-gold{background:#f4c22b}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--lantern);color:#fff;font:900 1rem var(--display);padding:10px 20px;cursor:pointer;letter-spacing:.08em;box-shadow:0 3px 0 #9c2018}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9c2018}
+.keys{font-size:.88rem;color:#6b5236}
+.rec{color:var(--lantern);font-weight:700}
+button:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.pop.show{animation:fade 1.1s}@keyframes fade{0%,100%{opacity:0}15%,75%{opacity:1}}}
+</style>
+
+<header class="hud">
+  <div class="brand">夜市撈金魚</div>
+  <div class="stat"><span>紙網</span><div class="poi" id="poi" aria-label="剩下的紙網"></div></div>
+  <div class="stat"><span>分數</span><b id="score">0</b></div>
+  <div class="stat"><span>最高</span><b id="best">0</b></div>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <div class="pop" id="pop" aria-live="polite"></div>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">撈金魚 一局三支網</h1>
+    <p id="ov-text">按住就是把紙網放進水裡，慢慢滑到金魚底下，放開手就撈起來。紙網泡水會越來越軟，動作太快、一次撈太重都會破。三支都破了就收攤。</p>
+    <div class="prices" id="prices"></div>
+    <div class="row"><button class="btn" id="ov-btn">拿紙網</button><span class="keys" id="ov-keys">電腦用滑鼠按住拖曳</span></div>
+  </section>
+</main>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const poiEl = $('poi'), scoreEl = $('score'), bestEl = $('best'), pop = $('pop'), muteBtn = $('mute');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn'), ovKeys = $('ov-keys'), pricesEl = $('prices');
+
+/* ---------- sound: splashes are filtered noise, catches are a rising blip ---------- */
+let actx = null, noiseBuf = null, muted = !!store.get('goldfish.muted', false);
+function audio() {
+  actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  if (!noiseBuf) {
+    noiseBuf = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return actx;
+}
+function noise(dur, freq, type = 'bandpass', vol = .25) {
+  if (muted) return;
+  try {
+    const a = audio(), t = a.currentTime, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    s.buffer = noiseBuf; f.type = type; f.frequency.value = freq; f.Q.value = .8;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(a.destination); s.start(t); s.stop(t + dur + .02);
+  } catch (e) {}
+}
+function tone(f1, f2, dur = .12, type = 'sine', vol = .07) {
+  if (muted) return;
+  try {
+    const a = audio(), t = a.currentTime, o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+const sfx = {
+  dip: () => noise(.25, 700, 'bandpass', .22),
+  lift: () => noise(.18, 1400, 'bandpass', .14),
+  catch: n => { for (let i = 0; i < n; i++) setTimeout(() => tone(520 + i * 90, 980 + i * 90, .13, 'sine', .08), i * 70); },
+  tear: () => { noise(.08, 3000, 'highpass', .25); setTimeout(() => noise(.12, 2200, 'highpass', .2), 60); tone(220, 90, .35, 'triangle', .06); },
+  pour: () => noise(.7, 500, 'lowpass', .2)
+};
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('goldfish.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) sfx.lift(); });
+function showPop(t) { pop.textContent = t; pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show'); }
+
+/* ---------- fish kinds: points, how heavy they are on the paper, size, speed ---------- */
+const KINDS = {
+  red:  { name: '紅金魚',   pts: 10, w: 14, size: 9.5, sp: 1,   body: '#f2552c', fin: 'rgba(255,128,80,.75)', odds: 50 },
+  koh:  { name: '紅白',     pts: 15, w: 15, size: 10,  sp: 1,   body: '#fff3e8', fin: 'rgba(255,240,230,.7)', patch: '#e8432a', odds: 22 },
+  blk:  { name: '黑出目金', pts: 20, w: 18, size: 10.5, sp: .9, body: '#1d1a22', fin: 'rgba(40,36,48,.75)', eyes: true, odds: 15 },
+  big:  { name: '大琉金',   pts: 30, w: 28, size: 14,  sp: .8,  body: '#e8432a', fin: 'rgba(255,110,70,.6)', odds: 9 },
+  gold: { name: '黃金魚',   pts: 50, w: 20, size: 10,  sp: 1.35, body: '#f4c22b', fin: 'rgba(255,225,120,.7)', odds: 4 }
+};
+const KIND_KEYS = Object.keys(KINDS);
+const CLASS = { red: 'f-red', koh: 'f-koh', blk: 'f-blk', big: 'f-big', gold: 'f-gold' };
+function renderPrices(counts) {
+  pricesEl.innerHTML = KIND_KEYS.map(k => `<div><i class="${CLASS[k]}"></i>${KINDS[k].name}<b>${counts ? '×' + (counts[k] || 0) : KINDS[k].pts + ' 分'}</b></div>`).join('');
+}
+renderPrices(null);
+
+/* ---------- world: a 400-unit-wide stage, tub on top, counter with the bowl below ---------- */
+const W = 400, R = 34, POIS = 3;
+let H = 640, S = 1, DPR = 1, tub, water, bowl;
+function fit() {
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S;
+  const counter = Math.max(96, Math.min(150, H * .19));
+  tub = { x: 12, y: 12, w: W - 24, h: H - counter - 18, r: 58 };
+  water = { x: tub.x + 13, y: tub.y + 13, w: tub.w - 26, h: tub.h - 26, r: 46 };
+  bowl = { x: W * .34, y: H - counter / 2 - 2, r: Math.min(46, counter / 2 - 8) };
+  for (const f of fish) keepInside(f);
+}
+// signed distance to the water's rounded rectangle; negative means inside
+function sd(px, py, b = water) {
+  const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  const qx = Math.abs(px - cx) - (b.w / 2 - b.r), qy = Math.abs(py - cy) - (b.h / 2 - b.r);
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - b.r;
+}
+function keepInside(f) {
+  const m = f.size + 4, d = sd(f.x, f.y);
+  if (d > -m) {
+    const cx = water.x + water.w / 2, cy = water.y + water.h / 2, dx = cx - f.x, dy = cy - f.y, l = Math.hypot(dx, dy) || 1;
+    f.x += dx / l * (d + m); f.y += dy / l * (d + m);
+  }
+}
+
+/* ---------- state ---------- */
+let fish = [], flying = [], inBowl = [], rings = [], floats = [];
+let state = 'ready', score = 0, poisLeft = POIS, betweenT = 0, overAt = 0, held = null, counts = {};
+let best = store.get('goldfish.best', 0);
+bestEl.textContent = best;
+const poi = { x: W * .7, y: 300, tx: W * .7, ty: 300, inWater: false, wet: false, D: 100, torn: false, spd: 0, cracks: [], tearT: 0, visible: true };
+const pickKind = () => { let r = Math.random() * 100; for (const k of KIND_KEYS) { if ((r -= KINDS[k].odds) < 0) return k; } return 'red'; };
+function makeFish(k, x, y) {
+  const K = KINDS[k];
+  return { k, x, y, a: Math.random() * Math.PI * 2, v: 30, size: K.size, base: (26 + Math.random() * 14) * K.sp, ph: Math.random() * 6, turn: 0, turnT: 0, flee: 0, fx: 0, fy: 0 };
+}
+function stock(n, pour) {
+  for (let i = 0; i < n; i++) {
+    let x, y, tries = 0;
+    do { x = water.x + 30 + Math.random() * (water.w - 60); y = water.y + 30 + Math.random() * (water.h - 60); } while (sd(x, y) > -30 && ++tries < 20);
+    if (pour) { x = water.x + water.w * (.3 + Math.random() * .4); y = water.y + 40 + Math.random() * 30; }
+    const f = makeFish(pickKind(), x, y);
+    if (pour) { f.flee = .8; f.fx = Math.random() - .5; f.fy = 1; }
+    fish.push(f);
+  }
+}
+function newPoi() {
+  Object.assign(poi, { inWater: false, wet: false, D: 100, torn: false, spd: 0, tearT: 0, visible: true });
+  poi.cracks = Array.from({ length: 6 }, () => {
+    const a = Math.random() * Math.PI * 2, b = a + (Math.random() - .5) * 1.6, r1 = Math.random() * R * .5, r2 = R * (.55 + Math.random() * .4);
+    return [Math.cos(a) * r1, Math.sin(a) * r1, Math.cos(b) * r2, Math.sin(b) * r2];
+  });
+}
+function hud() {
+  scoreEl.textContent = score;
+  const used = POIS - poisLeft;
+  poiEl.innerHTML = Array.from({ length: POIS }, (_, i) => `<i class="${i < used ? 'used' : ''}"></i>`).join('');
+}
+function reset() {
+  fish = []; flying = []; inBowl = []; rings = []; floats = [];
+  score = 0; poisLeft = POIS; counts = {}; held = null;
+  stock(14, false); newPoi(); hud();
+}
+function start() {
+  if (state === 'play' || state === 'between') return;
+  if (state === 'paused') { resume(); return; }
+  reset(); state = 'play'; ov.hidden = true; ovBtn.blur();
+  showPop('第 1 支紙網');
+}
+function pause() {
+  if (state !== 'play' && state !== 'between') return;
+  state = 'paused'; held = null;
+  ovTitle.textContent = '休息一下'; ovText.textContent = '紙網先停在原地，水不會繼續泡它。';
+  pricesEl.hidden = true; ovBtn.textContent = '繼續撈'; ovKeys.textContent = 'P 或空白鍵也能繼續';
+  ov.hidden = false;
+}
+function resume() {
+  if (state !== 'paused') return;
+  state = 'play'; ov.hidden = true; pricesEl.hidden = false; ovBtn.blur();
+  if (poi.inWater) lift();
+}
+function gameOver() {
+  state = 'over'; overAt = performance.now();
+  const n = Object.values(counts).reduce((a, b) => a + b, 0), rec = score > best;
+  if (rec) { best = score; store.set('goldfish.best', best); bestEl.textContent = best; }
+  ovTitle.textContent = n ? `收攤囉，撈到 ${n} 條` : '收攤囉，一條都沒撈到';
+  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `這局 ${score} 分，最高紀錄 ${best} 分。` + (n ? '' : '下次放進水裡之後動作慢一點。');
+  renderPrices(counts); pricesEl.hidden = false;
+  ovBtn.textContent = '再買三支網'; ovKeys.textContent = '點畫面也能重來';
+  ov.hidden = false;
+}
+
+/* ---------- the poi: dip, drag, lift ---------- */
+function ring(x, y, big) { rings.push({ x, y, t: 0, big }); }
+function startle(x, y, r) {
+  for (const f of fish) {
+    const dx = f.x - x, dy = f.y - y, d = Math.hypot(dx, dy);
+    if (d < r) { f.flee = .7 + Math.random() * .3; f.fx = dx / (d || 1); f.fy = dy / (d || 1); }
+  }
+}
+function dip() {
+  if (poi.inWater || poi.torn || state !== 'play') return;
+  poi.inWater = true; poi.wet = true; poi.spd = 0;
+  ring(poi.x, poi.y, true); sfx.dip();
+  startle(poi.x, poi.y, 70);
+}
+function lift() {
+  if (!poi.inWater) return;
+  poi.inWater = false; ring(poi.x, poi.y, false); sfx.lift();
+  const caught = fish.filter(f => Math.hypot(f.x - poi.x, f.y - poi.y) < R - f.size * .35);
+  if (!caught.length) return;
+  // a heavy fish flips off a poi that is still swinging
+  const kept = caught.filter(f => !(poi.spd > 150 && (f.k === 'big' || f.k === 'blk') && Math.random() < .45));
+  const cost = kept.reduce((s, f) => s + KINDS[f.k].w, 0) + 4;
+  if (cost >= poi.D) {
+    for (const f of caught) { f.flee = 1; f.fx = Math.random() - .5; f.fy = Math.random() - .5; }
+    tear('撐不住，紙網破了');
+    return;
+  }
+  poi.D -= cost;
+  if (kept.length < caught.length) showPop('魚跳回水裡了');
+  let gained = 0;
+  for (const f of kept) {
+    fish.splice(fish.indexOf(f), 1);
+    flying.push({ f, x0: poi.x, y0: poi.y, t: 0 });
+    gained += KINDS[f.k].pts; counts[f.k] = (counts[f.k] || 0) + 1;
+    floats.push({ x: f.x, y: f.y - 10, text: '+' + KINDS[f.k].pts, t: 0 });
+  }
+  if (kept.length >= 2) { const bonus = (kept.length - 1) * 10; gained += bonus; showPop(`一網 ${kept.length} 條！+${bonus}`); }
+  else if (kept.length && kept[0].k === 'gold') showPop('黃金魚！');
+  score += gained; hud();
+  sfx.catch(kept.length);
+}
+function tear(msg) {
+  poi.torn = true; poi.tearT = 0;
+  if (poi.inWater) { poi.inWater = false; ring(poi.x, poi.y, true); }
+  sfx.tear(); showPop(msg);
+  poisLeft--; hud();
+  state = 'between'; betweenT = 1.2;
+}
+
+/* ---------- input: touch draws the poi above the finger so the fish stay visible ---------- */
+function toWorld(e) {
+  const r = stage.getBoundingClientRect();
+  const lift = e.pointerType === 'touch' ? 52 : 0;
+  return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S - lift };
+}
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('.overlay')) return;
+  e.preventDefault();
+  if (state === 'over') { if (performance.now() - overAt > 900) start(); return; }
+  if (state !== 'play' || held !== null) return;
+  held = e.pointerId;
+  try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+  const p = toWorld(e);
+  poi.tx = poi.x = p.x; poi.ty = poi.y = p.y;
+  if (sd(poi.x, poi.y) < -R * .4) dip();
+});
+stage.addEventListener('pointermove', e => {
+  if (held !== null && e.pointerId !== held) return;
+  if (held === null && e.pointerType !== 'mouse') return;
+  const p = toWorld(e);
+  poi.tx = p.x; poi.ty = p.y;
+});
+const release = e => {
+  if (held === null || e.pointerId !== held) return;
+  held = null;
+  if (poi.inWater) lift();
+};
+stage.addEventListener('pointerup', release);
+stage.addEventListener('pointercancel', release);
+ovBtn.addEventListener('click', () => { if (state === 'over' && performance.now() - overAt < 600) return; start(); });
+addEventListener('keydown', e => {
+  if (e.code === 'KeyP' || e.code === 'Escape') { state === 'paused' ? resume() : pause(); return; }
+  if ((e.code === 'Space' || e.code === 'Enter') && !(e.target.closest && e.target.closest('button'))) {
+    e.preventDefault();
+    if (state === 'paused') resume(); else if (state === 'ready' || (state === 'over' && performance.now() - overAt > 600)) start();
+  }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+addEventListener('blur', pause);
+
+/* ---------- update ---------- */
+function steerFish(f, dt) {
+  const K = KINDS[f.k];
+  f.turnT -= dt;
+  if (f.turnT <= 0) { f.turn = (Math.random() - .5) * 2.4; f.turnT = .8 + Math.random() * 2; }
+  let sx = Math.cos(f.a + f.turn * .5), sy = Math.sin(f.a + f.turn * .5);
+  const d = sd(f.x, f.y);
+  if (d > -48) {
+    const cx = water.x + water.w / 2, cy = water.y + water.h / 2, dx = cx - f.x, dy = cy - f.y, l = Math.hypot(dx, dy) || 1;
+    const k = 1.5 + (d + 48) / 14;
+    sx += dx / l * k; sy += dy / l * k;
+  }
+  for (const o of fish) {
+    if (o === f) continue;
+    const dx = f.x - o.x, dy = f.y - o.y, dd = dx * dx + dy * dy, m = (f.size + o.size) * 1.4;
+    if (dd < m * m && dd > .01) { const l = Math.sqrt(dd); sx += dx / l * .8; sy += dy / l * .8; }
+  }
+  if (poi.inWater) {
+    const dx = poi.x - f.x, dy = poi.y - f.y, dd = Math.hypot(dx, dy);
+    if (poi.spd > 115 && dd < 66 + f.size) { f.flee = .6; f.fx = -dx / (dd || 1); f.fy = -dy / (dd || 1); }
+    // a still net in the water makes curious fish drift over it; the gold one is warier
+    else if (poi.spd < 28 && dd < 150 && dd > 6) { const c = f.k === 'gold' ? .25 : .7; sx += dx / dd * c; sy += dy / dd * c; }
+  }
+  let rate = 2.6, target = f.base;
+  if (f.flee > 0) { f.flee -= dt; sx += f.fx * 4; sy += f.fy * 4; rate = 8; target = 150 * K.sp; }
+  const ta = Math.atan2(sy, sx);
+  let da = ta - f.a; da = Math.atan2(Math.sin(da), Math.cos(da));
+  f.a += Math.max(-rate * dt, Math.min(rate * dt, da));
+  f.v += (target - f.v) * Math.min(1, dt * 3);
+  f.x += Math.cos(f.a) * f.v * dt; f.y += Math.sin(f.a) * f.v * dt;
+  f.ph += dt * (4 + f.v * .09);
+  keepInside(f);
+}
+function update(dt) {
+  for (const r of rings) r.t += dt;
+  rings = rings.filter(r => r.t < 1);
+  for (const fl of floats) fl.t += dt;
+  floats = floats.filter(fl => fl.t < 1);
+  if (state === 'paused') return;
+  for (const f of fish) steerFish(f, dt);
+  for (const b of inBowl) { b.a += dt * b.w; b.ph += dt * 6; }
+  for (const fl of flying) fl.t += dt / .55;
+  for (const fl of flying.filter(x => x.t >= 1)) {
+    if (inBowl.length < 24) inBowl.push({ k: fl.f.k, a: Math.random() * 6.28, rr: .2 + Math.random() * .5, w: (.4 + Math.random() * .5) * (Math.random() < .5 ? -1 : 1), ph: Math.random() * 6 });
+  }
+  flying = flying.filter(x => x.t < 1);
+
+  if (state === 'play' || state === 'ready') {
+    const px = poi.x, py = poi.y;
+    const k = Math.min(1, dt * (poi.inWater ? 14 : 22));
+    poi.x += (poi.tx - poi.x) * k; poi.y += (poi.ty - poi.y) * k;
+    poi.x = Math.max(8, Math.min(W - 8, poi.x)); poi.y = Math.max(8, Math.min(H - 8, poi.y));
+    if (poi.inWater) {
+      // the tub wall stops the frame, so the poi slides along the edge instead of leaving the water
+      const d = sd(poi.x, poi.y), m = R * .4;
+      if (d > -m) {
+        const cx = water.x + water.w / 2, cy = water.y + water.h / 2, dx = cx - poi.x, dy = cy - poi.y, l = Math.hypot(dx, dy) || 1;
+        poi.x += dx / l * (d + m); poi.y += dy / l * (d + m);
+      }
+    }
+    const sp = Math.hypot(poi.x - px, poi.y - py) / Math.max(dt, 1e-3);
+    poi.spd += (sp - poi.spd) * Math.min(1, dt * 10);
+    if (state === 'play') {
+      if (held !== null && !poi.inWater && sd(poi.x, poi.y) < -R * .4) dip();
+      if (poi.inWater) {
+        poi.D -= (2.4 + Math.max(0, poi.spd - 60) * .035) * dt;
+        if (poi.D <= 0) tear('泡太久，紙網破了');
+      }
+    }
+  }
+  if (state === 'between') {
+    poi.tearT += dt; betweenT -= dt;
+    if (betweenT <= 0) {
+      if (poisLeft > 0) { newPoi(); state = 'play'; held = null; showPop(`第 ${POIS - poisLeft + 1} 支紙網`); }
+      else gameOver();
+    }
+  }
+  if ((state === 'play' || state === 'between') && fish.length < 9) { stock(4, true); sfx.pour(); ring(water.x + water.w / 2, water.y + 52, true); showPop('老闆加魚了'); }
+}
+
+/* ---------- draw ---------- */
+function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function drawFish(f, x, y, a, scale, t, shadow) {
+  const K = KINDS[f.k], s = f.size * scale, L = s * 1.35, Wd = s * .62;
+  const sway = Math.sin(f.ph) * .35;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+  if (shadow) {
+    ctx.fillStyle = 'rgba(5,40,80,.28)';
+    ctx.beginPath(); ctx.ellipse(-s * .2, 0, L, Wd, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore(); return;
+  }
+  // tail fan, two lobes that sway with the stroke
+  ctx.save(); ctx.translate(-L * .85, 0); ctx.rotate(sway);
+  ctx.fillStyle = K.fin;
+  const tl = f.k === 'big' ? s * 1.6 : s * 1.05;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-tl * .6, -tl * .9, -tl, -tl * .55); ctx.quadraticCurveTo(-tl * .55, 0, -tl, tl * .55); ctx.quadraticCurveTo(-tl * .6, tl * .9, 0, 0); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = K.fin;
+  for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(s * .15, side * Wd * 1.05, s * .45, s * .2, side * (.6 + sway * .4), 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = K.body;
+  ctx.beginPath(); ctx.ellipse(0, 0, L, Wd, 0, 0, Math.PI * 2); ctx.fill();
+  if (K.patch) { ctx.fillStyle = K.patch; ctx.beginPath(); ctx.ellipse(L * .35, 0, L * .45, Wd * .8, 0, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(-L * .4, Wd * .2, L * .25, Wd * .5, .4, 0, Math.PI * 2); ctx.fill(); }
+  if (f.k === 'gold') { ctx.fillStyle = `rgba(255,255,220,${.35 + .25 * Math.sin(t * 6 + f.ph)})`; ctx.beginPath(); ctx.ellipse(-L * .1, -Wd * .2, L * .5, Wd * .3, 0, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.beginPath(); ctx.ellipse(-L * .05, -Wd * .3, L * .55, Wd * .22, 0, 0, Math.PI * 2); ctx.fill();
+  const er = K.eyes ? s * .28 : s * .14, ey = K.eyes ? Wd * 1.0 : Wd * .62;
+  for (const side of [-1, 1]) {
+    ctx.fillStyle = K.eyes ? '#2c2833' : '#111';
+    ctx.beginPath(); ctx.arc(L * .62, side * ey, er, 0, Math.PI * 2); ctx.fill();
+    if (K.eyes) { ctx.fillStyle = '#0b0a0e'; ctx.beginPath(); ctx.arc(L * .66, side * ey, er * .55, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.restore();
+}
+function drawWater(t) {
+  ctx.save();
+  rrect(tub.x, tub.y, tub.w, tub.h, tub.r);
+  const rim = ctx.createLinearGradient(0, tub.y, 0, tub.y + tub.h);
+  rim.addColorStop(0, '#5aa6ee'); rim.addColorStop(1, '#2f6fc4');
+  ctx.fillStyle = rim; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2; ctx.stroke();
+  rrect(water.x, water.y, water.w, water.h, water.r);
+  const g = ctx.createRadialGradient(W / 2, water.y + water.h * .45, 20, W / 2, water.y + water.h * .5, water.h * .7);
+  g.addColorStop(0, '#5fcbe8'); g.addColorStop(1, '#2a8cc4');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.clip();
+  // soft caustic light drifting on the tub floor
+  for (let i = 0; i < 7; i++) {
+    const cx = water.x + water.w * (.5 + .42 * Math.sin(t * .23 + i * 1.7)), cy = water.y + water.h * (.5 + .42 * Math.cos(t * .19 + i * 2.3));
+    const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 60);
+    rg.addColorStop(0, 'rgba(255,255,255,.12)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = rg; ctx.fillRect(cx - 60, cy - 60, 120, 120);
+  }
+  ctx.restore();
+}
+function drawLanternGlints(t) {
+  ctx.save(); rrect(water.x, water.y, water.w, water.h, water.r); ctx.clip();
+  ctx.globalCompositeOperation = 'lighter';
+  [[.26, .16, '255,120,90'], [.72, .1, '255,190,100'], [.5, .3, '255,150,90']].forEach(([u, v, c], i) => {
+    const x = water.x + water.w * u + Math.sin(t * .8 + i) * 3, y = water.y + water.h * v + Math.cos(t * .7 + i) * 2;
+    const rg = ctx.createRadialGradient(x, y, 0, x, y, 26);
+    rg.addColorStop(0, `rgba(${c},.45)`); rg.addColorStop(1, `rgba(${c},0)`);
+    ctx.fillStyle = rg; ctx.beginPath(); ctx.ellipse(x, y, 26, 12 + Math.sin(t * 2 + i) * 2, 0, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.restore();
+}
+function drawPoi(t) {
+  if (!poi.visible) return;
+  const x = poi.x, y = poi.y, up = !poi.inWater;
+  const s = up ? 1.06 : 1;
+  ctx.save();
+  if (up) { ctx.fillStyle = 'rgba(0,20,40,.28)'; ctx.beginPath(); ctx.arc(x + 10, y + 14, R, 0, Math.PI * 2); ctx.fill(); }
+  ctx.translate(x, y); ctx.scale(s, s);
+  // handle
+  ctx.save(); ctx.rotate(Math.PI / 4);
+  ctx.fillStyle = '#c92f25'; rrect(R - 2, -5, 74, 10, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(R + 2, -4, 66, 2);
+  ctx.restore();
+  // paper: bright and dry before the first dip, see-through once wet, shredded when torn
+  if (poi.torn) {
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.beginPath();
+    for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI * 2, r = R - 3 - (i % 2 ? 7 : 2) - Math.sin(i * 7.3) * 3; i ? ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+    ctx.moveTo(R - 1, 0); ctx.arc(0, 0, R - 1, 0, Math.PI * 2, true);
+    ctx.fill('evenodd');
+  } else {
+    ctx.fillStyle = poi.wet ? `rgba(255,255,255,${.3 + .1 * poi.D / 100})` : 'rgba(255,255,255,.82)';
+    ctx.beginPath(); ctx.arc(0, 0, R - 1, 0, Math.PI * 2); ctx.fill();
+    const shown = Math.floor((100 - poi.D) / 15);
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1.2;
+    for (let i = 0; i < Math.min(shown, poi.cracks.length); i++) { const [a, b, c, d] = poi.cracks[i]; ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo((a + c) / 2 + 3, (b + d) / 2 - 2); ctx.lineTo(c, d); ctx.stroke(); }
+  }
+  ctx.strokeStyle = '#e9473b'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(0, 0, R + .5, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+  if (poi.inWater) {
+    ctx.strokeStyle = `rgba(255,255,255,${.25 + .15 * Math.sin(t * 6)})`; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(0, 0, R + 5 + Math.sin(t * 4) * 1.5, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawCounter(t) {
+  const top = tub.y + tub.h + 6;
+  ctx.fillStyle = '#5b3d27'; ctx.fillRect(0, top, W, H - top);
+  ctx.fillStyle = 'rgba(0,0,0,.12)'; for (let x = 0; x < W; x += 50) ctx.fillRect(x, top, 2, H - top);
+  ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(0, top, W, 3);
+  const b = bowl;
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(b.x + 6, b.y + 8, b.r + 4, b.r + 2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f7f3ec'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 5, 0, Math.PI * 2); ctx.fill();
+  const g = ctx.createRadialGradient(b.x, b.y, 4, b.x, b.y, b.r);
+  g.addColorStop(0, '#8fe0f2'); g.addColorStop(1, '#4fb2d8');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 1, 0, Math.PI * 2); ctx.clip();
+  for (const f of inBowl) {
+    const rr = b.r * f.rr, x = b.x + Math.cos(f.a) * rr, y = b.y + Math.sin(f.a) * rr, a = f.a + (f.w > 0 ? Math.PI / 2 : -Math.PI / 2);
+    drawFish({ k: f.k, size: KINDS[f.k].size, ph: f.ph }, x, y, a, .55, t, false);
+  }
+  ctx.restore();
+  const n = Object.values(counts).reduce((a, c) => a + c, 0);
+  ctx.fillStyle = '#ffe3b0'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.font = '900 15px "Chiron GoRound TC", sans-serif';
+  ctx.fillText('碗裡', b.x + b.r + 22, b.y - 12);
+  ctx.font = '600 30px Fredoka, sans-serif';
+  const nx = b.x + b.r + 22, nw = ctx.measureText(String(n)).width;
+  ctx.fillText(String(n), nx, b.y + 14);
+  ctx.font = '900 14px "Chiron GoRound TC", sans-serif';
+  ctx.fillText('條', nx + nw + 6, b.y + 17);
+}
+function draw(t) {
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0);
+  ctx.fillStyle = '#241c2c'; ctx.fillRect(0, 0, W, H);
+  drawWater(t);
+  ctx.save(); rrect(water.x, water.y, water.w, water.h, water.r); ctx.clip();
+  for (const f of fish) drawFish(f, f.x + 6, f.y + 8, f.a, 1, t, true);
+  for (const f of fish) drawFish(f, f.x, f.y, f.a, 1, t, false);
+  for (const r of rings) {
+    const e = r.t * (r.big ? 70 : 45);
+    ctx.strokeStyle = `rgba(255,255,255,${.6 * (1 - r.t)})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(r.x, r.y, R * .6 + e, 0, Math.PI * 2); ctx.stroke();
+    if (r.big) { ctx.beginPath(); ctx.arc(r.x, r.y, R * .3 + e * .6, 0, Math.PI * 2); ctx.stroke(); }
+  }
+  ctx.restore();
+  drawLanternGlints(t);
+  drawCounter(t);
+  for (const fl of flying) {
+    const e = fl.t, x = fl.x0 + (bowl.x - fl.x0) * e, y = fl.y0 + (bowl.y - fl.y0) * e - Math.sin(e * Math.PI) * 70;
+    drawFish(fl.f, x, y, Math.atan2(bowl.y - fl.y0, bowl.x - fl.x0) + Math.sin(fl.t * 30) * .4, 1 - e * .4, t, false);
+  }
+  drawPoi(t);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '600 18px Fredoka, sans-serif';
+  for (const fl of floats) { ctx.fillStyle = `rgba(255,243,224,${1 - fl.t})`; ctx.fillText(fl.text, fl.x, fl.y - fl.t * 30); }
+  // warm light from the lantern string above the stall
+  const lg = ctx.createRadialGradient(W / 2, -60, 20, W / 2, -60, H * .8);
+  lg.addColorStop(0, 'rgba(255,170,80,.16)'); lg.addColorStop(1, 'rgba(255,170,80,0)');
+  ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
+  update(dt); draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+stock(14, false); newPoi(); hud();
+requestAnimationFrame(frame);
+})();
+</script>

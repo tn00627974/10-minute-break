@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>夜市套圈圈</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Fredoka:wght@500;600&display=swap">
+<style>
+/* Layout: the stall seen from behind the rope — a turf floor runs back in perspective to a plywood wall hung with lanterns; the prizes stand in staggered rows; a white marker board carries the rules */
+:root{
+  --night:#140f1c;
+  --wall:#6b4527;
+  --turf:#2f8f4e;
+  --bamboo:#e2bf73;
+  --lantern:#e23b2e;
+  --board:#f4efe2;
+  --marker:#1f2a44;
+  --text:#fff3e0;
+  --muted:#c4b3c6;
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --hand:"LXGW WenKai TC","Kaiti TC","DFKai-SB","STKaiti",serif;
+  --num:"Fredoka","Chiron GoRound TC",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--night)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:radial-gradient(120% 50% at 50% 0%,#36202c,var(--night) 70%);
+  color:var(--text);font-family:var(--display);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.1rem;letter-spacing:.1em;white-space:nowrap;color:var(--bamboo);text-shadow:0 0 12px rgba(226,191,115,.4)}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-family:var(--num);font-weight:600;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid #4a3a52;background:transparent;color:var(--text);cursor:pointer;font-size:.9rem;display:grid;place-items:center;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:14px;overflow:hidden;touch-action:none;background:var(--night);box-shadow:0 0 0 1px #3a2c40,0 20px 50px rgba(0,0,0,.5)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pop{position:absolute;left:0;right:0;top:38%;text-align:center;font:900 1.4rem var(--display);color:var(--text);text-shadow:0 2px 0 rgba(0,0,0,.4),0 0 14px rgba(0,0,0,.5);opacity:0;pointer-events:none;letter-spacing:.06em}
+.pop.show{animation:pop 1.1s ease-out}
+@keyframes pop{0%{opacity:0;transform:translateY(8px) scale(.95)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-12px)}}
+/* the stall's white marker board */
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%) rotate(.8deg);z-index:5;padding:18px 18px 16px;background:var(--board);color:var(--marker);font-family:var(--hand);border:6px solid #b98a52;border-radius:4px;box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px;max-height:calc(100% - 32px);overflow-y:auto}
+.overlay h1{margin:0;font-family:var(--display);font-weight:900;font-size:1.55rem;letter-spacing:.08em;color:var(--lantern)}
+.overlay p{margin:0;font-size:1rem;line-height:1.7;max-width:38ch}
+.prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 16px;padding:8px 0;border-top:2px solid rgba(31,42,68,.18);border-bottom:2px solid rgba(31,42,68,.18);font-size:.98rem}
+.prices div{display:flex;align-items:baseline;gap:8px;min-width:0}
+.prices b{margin-left:auto;font-family:var(--num);font-weight:600;font-variant-numeric:tabular-nums;color:var(--lantern)}
+.prices .note{grid-column:1/-1;font-size:.88rem;color:#55607a}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--lantern);color:#fff;font:900 1rem var(--display);padding:10px 20px;cursor:pointer;letter-spacing:.08em;box-shadow:0 3px 0 #9c2018}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9c2018}
+.keys{font-size:.88rem;color:#55607a}
+.rec{color:var(--lantern);font-weight:700}
+button:focus-visible{outline:2px solid var(--bamboo);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.pop.show{animation:fade 1.1s}@keyframes fade{0%,100%{opacity:0}15%,75%{opacity:1}}}
+</style>
+
+<header class="hud">
+  <div class="brand">夜市套圈圈</div>
+  <div class="stat"><span>竹圈</span><b id="rings">10</b></div>
+  <div class="stat"><span>分數</span><b id="score">0</b></div>
+  <div class="stat"><span>最高</span><b id="best">0</b></div>
+  <button class="icon-btn" id="mute" aria-label="音效" aria-pressed="true">♪</button>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <div class="pop" id="pop" aria-live="polite"></div>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">套圈圈 一局十個圈</h1>
+    <p id="ov-text">在畫面上按住往下拉，拉得越長丟得越遠，左右偏就往反方向丟，放開就出手。竹圈要整個套住獎品的底座才算，碰到邊會彈開。</p>
+    <div class="prices" id="prices"></div>
+    <div class="row"><button class="btn" id="ov-btn">拿竹圈</button><span class="keys" id="ov-keys">電腦用滑鼠按住往下拉</span></div>
+  </section>
+</main>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const ringsEl = $('rings'), scoreEl = $('score'), bestEl = $('best'), pop = $('pop'), muteBtn = $('mute');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn'), ovKeys = $('ov-keys'), pricesEl = $('prices');
+
+/* ---------- sound ---------- */
+let actx = null, noiseBuf = null, muted = !!store.get('ringtoss.muted', false);
+function audio() {
+  actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  if (!noiseBuf) {
+    noiseBuf = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return actx;
+}
+function noise(dur, f1, f2, type = 'bandpass', vol = .2) {
+  if (muted) return;
+  try {
+    const a = audio(), t = a.currentTime, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    s.buffer = noiseBuf; f.type = type; f.Q.value = 1;
+    f.frequency.setValueAtTime(f1, t); f.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(a.destination); s.start(t); s.stop(t + dur + .02);
+  } catch (e) {}
+}
+function tone(f1, f2, dur = .1, type = 'triangle', vol = .06) {
+  if (muted) return;
+  try {
+    const a = audio(), t = a.currentTime, o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+const sfx = {
+  whoosh: () => noise(.35, 600, 2400, 'bandpass', .16),
+  clink: () => { tone(2300, 1900, .06, 'triangle', .07); setTimeout(() => tone(1700, 1500, .08, 'triangle', .05), 40); },
+  thud: () => noise(.12, 300, 120, 'lowpass', .25),
+  win: () => [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => tone(f, f, .14, 'square', .045), i * 90))
+};
+function setMute(m) { muted = m; muteBtn.setAttribute('aria-pressed', String(!m)); muteBtn.classList.toggle('off', m); store.set('ringtoss.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!muted) sfx.clink(); });
+function showPop(t) { pop.textContent = t; pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show'); }
+
+/* ---------- prizes: base radius r decides how much room the ring has, h is how tall it stands ---------- */
+const RR = 22;   // ring radius; a prize is won when the ring's centre is within RR - r of the prize's centre
+const TYPES = {
+  can:    { name: '罐裝汽水', pts: 10, r: 8,  h: 26 },
+  ramune: { name: '彈珠汽水', pts: 20, r: 7,  h: 40 },
+  duck:   { name: '小鴨',     pts: 30, r: 11, h: 22 },
+  cat:    { name: '招財貓',   pts: 50, r: 13, h: 32 },
+  box:    { name: '禮物盒',   pts: 80, r: 15, h: 15 }
+};
+const TYPE_KEYS = Object.keys(TYPES);
+const ROWS = [40, 105, 170, 235, 300];              // depth of each row
+const ROW_MULT = [1, 1.2, 1.5, 2, 2.5];
+const ROW_ODDS = [[5, 3, 2, 0, 0], [3, 3, 3, 1, 0], [2, 2, 3, 2, 1], [1, 2, 2, 3, 2], [0, 1, 2, 3, 3]];
+const CAN_COLORS = [['#d93a32', '#ff7a6b'], ['#2d7fd1', '#7fb8f0'], ['#2f9a55', '#7fd49a'], ['#f2a12b', '#ffd27a']];
+const BOX_COLORS = [['#e85d9a', '#ff9ec6'], ['#6a5acd', '#a99cf0'], ['#2fa3a0', '#7fd8d4']];
+const WALL_D = 365, SIDE = 175, START = { x: 0, d: -20, z: 12 }, G = 1100;
+const pointsOf = p => Math.round(TYPES[p.t].pts * ROW_MULT[p.row] / 5) * 5;
+
+function renderPrices(won) {
+  if (!won) {
+    pricesEl.innerHTML = TYPE_KEYS.map(k => `<div>${TYPES[k].name}<b>${TYPES[k].pts} 分</b></div>`).join('') +
+      '<div class="note">越後排分數越高，最後一排 ×2.5。底座越大越難套。</div>';
+    return;
+  }
+  const by = {};
+  for (const p of won) { by[p.t] = by[p.t] || { n: 0, pts: 0 }; by[p.t].n++; by[p.t].pts += pointsOf(p); }
+  pricesEl.innerHTML = TYPE_KEYS.map(k => `<div>${TYPES[k].name} ×${by[k] ? by[k].n : 0}<b>${by[k] ? by[k].pts : 0}</b></div>`).join('');
+}
+renderPrices(null);
+
+/* ---------- perspective: a camera 175 units up, 150 units behind the front row line ---------- */
+const W = 400, F = 320, D0 = 150, K = 175;
+let H = 640, S = 1, DPR = 1, yH = 0;
+const sc = d => F / (d + D0);
+function proj(x, d, z = 0) { const s = sc(d); return { x: W / 2 + x * s, y: yH + K * s - z * s, s }; }
+function fit() {
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S;
+  yH = (H - 64) - K * sc(START.d);   // the spot you throw from sits just above the bottom edge
+}
+function ringShape(x, d, z) {
+  const c = proj(x, d, z), a = proj(x, d - RR, z), b = proj(x, d + RR, z);
+  let rx = RR * c.s, ry = (a.y - b.y) / 2, s = c.s;
+  // right in front of the camera the true perspective is too big to read, so cap the size and the tilt
+  if (rx > 34) { const k = 34 / rx; rx *= k; ry *= k; s *= k; }
+  return { cx: c.x, cy: (a.y + b.y) / 2, rx, ry: Math.max(1.5, Math.min(ry, rx * .6)), s };
+}
+
+/* ---------- state ---------- */
+let prizes = [], rings = [], flying = null, aim = null, won = [];
+let state = 'ready', score = 0, left = 10, nextT = 0, overAt = 0;
+let best = store.get('ringtoss.best', 0);
+bestEl.textContent = best;
+
+function pickType(row) {
+  const w = ROW_ODDS[row]; let r = Math.random() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < w.length; i++) if ((r -= w[i]) < 0) return TYPE_KEYS[i];
+  return 'can';
+}
+function layout() {
+  prizes = [];
+  ROWS.forEach((d, row) => {
+    const xs = row % 2 ? [-82, -27, 27, 82] : [-110, -55, 0, 55, 110];
+    for (const x of xs) {
+      const t = pickType(row);
+      prizes.push({ t, row, x, d, r: TYPES[t].r, h: TYPES[t].h, done: false,
+        c: (t === 'box' ? BOX_COLORS : CAN_COLORS)[Math.floor(Math.random() * (t === 'box' ? BOX_COLORS : CAN_COLORS).length)], wob: Math.random() * 6 });
+    }
+  });
+}
+function hud() { ringsEl.textContent = left; scoreEl.textContent = score; }
+function reset() { layout(); rings = []; flying = null; aim = null; won = []; score = 0; left = 10; hud(); }
+function start() {
+  if (state === 'paused') { resume(); return; }
+  if (state !== 'ready' && state !== 'over') return;
+  reset(); state = 'aim'; ov.hidden = true; ovBtn.blur();
+}
+function pause() {
+  if (state !== 'aim' && state !== 'flying' && state !== 'next') return;
+  state = 'paused-' + state; aim = null;
+  ovTitle.textContent = '休息一下'; ovText.textContent = `還有 ${left} 個竹圈，目前 ${score} 分。`;
+  pricesEl.hidden = true; ovBtn.textContent = '繼續丟'; ovKeys.textContent = 'P 或空白鍵也能繼續';
+  ov.hidden = false;
+}
+function resume() {
+  if (!state.startsWith('paused-')) return;
+  state = state.slice(7); ov.hidden = true; pricesEl.hidden = false; ovBtn.blur();
+}
+function gameOver() {
+  state = 'over'; overAt = performance.now();
+  const rec = score > best;
+  if (rec) { best = score; store.set('ringtoss.best', best); bestEl.textContent = best; }
+  ovTitle.textContent = won.length ? `套到 ${won.length} 樣獎品` : '十個圈都沒套中';
+  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `這局 ${score} 分，最高紀錄 ${best} 分。` + (won.length ? '' : '試著讓竹圈從高一點的地方落下。');
+  renderPrices(won); pricesEl.hidden = false;
+  ovBtn.textContent = '再買十個圈'; ovKeys.textContent = '點畫面也能重來';
+  ov.hidden = false;
+}
+
+/* ---------- throwing: pull back, the pull length sets the range, the sideways pull sets the angle ---------- */
+const MAX_PULL = 170;
+function aimFrom(a) {
+  const dx = a.cx - a.x0, dy = a.cy - a.y0;
+  if (dy < 8) return null;
+  const power = Math.min(1, Math.hypot(dx, dy) / MAX_PULL);
+  const angle = Math.max(-.55, Math.min(.55, Math.atan2(-dx, dy)));
+  return { power, angle, range: 40 + power * 420 };
+}
+// horizontal launch speed that lands the ring `range` away, thrown up at 1.5× its forward speed
+function launchSpeed(range) {
+  const k = 1.5, z0 = START.z;
+  let lo = 20, hi = 1500;
+  for (let i = 0; i < 40; i++) {
+    const v = (lo + hi) / 2, vz = k * v, T = (vz + Math.sqrt(vz * vz + 2 * G * z0)) / G;
+    if (v * T < range) lo = v; else hi = v;
+  }
+  return lo;
+}
+function makeRing(angle, range) {
+  const v = launchSpeed(range);
+  return { x: START.x, d: START.d, z: START.z, vx: v * Math.sin(angle), vd: v * Math.cos(angle), vz: 1.5 * v,
+    spin: 0, grounded: false, around: null, bounced: false, rest: false };
+}
+function throwRing(a) {
+  const t = aimFrom(a);
+  if (!t || t.power < .06) return;
+  // a little human wobble in every throw
+  const angle = t.angle + (Math.random() - .5) * .03, range = t.range * (1 + (Math.random() - .5) * .03);
+  flying = makeRing(angle, range);
+  left--; hud(); state = 'flying'; sfx.whoosh();
+}
+function bounce(r, p, dx, dd, dist, hop) {
+  const nx = dx / (dist || 1), nd = dd / (dist || 1), out = RR + p.r + .5;
+  r.x = p.x + nx * out; r.d = p.d + nd * out;
+  const vn = r.vx * nx + r.vd * nd;
+  if (vn < 0) { r.vx -= 1.6 * vn * nx; r.vd -= 1.6 * vn * nd; }
+  r.vx *= .45; r.vd *= .45;
+  if (hop) { r.z = Math.max(r.z, p.h); r.vz = 90; }
+  r.bounced = true; sfx.clink();
+}
+function stepRing(r, h) {
+  const pz = r.z;
+  r.x += r.vx * h; r.d += r.vd * h;
+  if (!r.grounded) { r.vz -= G * h; r.z += r.vz * h; }
+  r.spin += h * 9;
+  for (const p of prizes) {
+    const dx = r.x - p.x, dd = r.d - p.d, dist = Math.hypot(dx, dd), inner = RR - p.r;
+    if (r.around === p) {
+      // already over the top: the ring can only rattle down around it
+      if (dist > inner - .5) { r.x = p.x + dx / dist * (inner - .5); r.d = p.d + dd / dist * (inner - .5); }
+      continue;
+    }
+    if (dist >= RR + p.r || r.around) continue;
+    const top = p.h + (p.done ? 3 : 0);
+    if (pz > top && r.z <= top) {
+      if (dist <= inner && !p.done) { r.around = p; continue; }
+      // caught on the rim: sometimes it tips over and drops around anyway
+      if (dist < RR && !p.done && Math.random() < .3) {
+        r.x = p.x + dx / dist * (inner - 1); r.d = p.d + dd / dist * (inner - 1); r.around = p; sfx.clink(); continue;
+      }
+      bounce(r, p, dx, dd, dist, true);
+    } else if (r.z < top && dist > inner) {
+      bounce(r, p, dx, dd, dist, false);
+    }
+  }
+  if (r.d > WALL_D) { r.d = WALL_D; r.vd = -Math.abs(r.vd) * .3; sfx.thud(); }
+  if (Math.abs(r.x) > SIDE) { r.x = Math.sign(r.x) * SIDE; r.vx = -r.vx * .3; }
+  if (!r.grounded && r.z <= 0) { r.z = 0; r.vz = 0; r.grounded = true; r.vx *= .2; r.vd *= .2; sfx.thud(); }
+  if (r.grounded) {
+    const f = Math.max(0, 1 - 14 * h); r.vx *= f; r.vd *= f;
+    if (Math.hypot(r.vx, r.vd) < 4) { r.vx = r.vd = 0; r.rest = true; }
+  }
+}
+function settle(r) {
+  rings.push(r); flying = null;
+  const p = r.around;
+  if (p && !p.done) {
+    p.done = true; p.ring = r; won.push(p);
+    const pts = pointsOf(p);
+    score += pts; hud(); sfx.win();
+    showPop(`套中${TYPES[p.t].name}！+${pts}`);
+  } else showPop(r.bounced ? '差一點！' : '沒套中');
+  state = 'next'; nextT = left > 0 ? .7 : 1.3;
+}
+
+/* ---------- input ---------- */
+function toWorld(e) { const r = stage.getBoundingClientRect(); return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S }; }
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('.overlay')) return;
+  e.preventDefault();
+  if (state === 'over') { if (performance.now() - overAt > 900) start(); return; }
+  if (state !== 'aim' || aim) return;
+  const p = toWorld(e);
+  aim = { id: e.pointerId, x0: p.x, y0: p.y, cx: p.x, cy: p.y };
+  try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+});
+stage.addEventListener('pointermove', e => {
+  if (!aim || e.pointerId !== aim.id) return;
+  const p = toWorld(e); aim.cx = p.x; aim.cy = p.y;
+});
+stage.addEventListener('pointerup', e => {
+  if (!aim || e.pointerId !== aim.id) return;
+  const a = aim; aim = null;
+  if (state === 'aim') throwRing(a);
+});
+stage.addEventListener('pointercancel', () => { aim = null; });
+ovBtn.addEventListener('click', () => { if (state === 'over' && performance.now() - overAt < 600) return; start(); });
+addEventListener('keydown', e => {
+  if (e.code === 'KeyP' || e.code === 'Escape') { state.startsWith('paused-') ? resume() : pause(); return; }
+  if ((e.code === 'Space' || e.code === 'Enter') && !(e.target.closest && e.target.closest('button'))) {
+    e.preventDefault();
+    if (state.startsWith('paused-')) resume(); else if (state === 'ready' || (state === 'over' && performance.now() - overAt > 600)) start();
+  }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+addEventListener('blur', pause);
+
+/* ---------- update ---------- */
+function update(dt) {
+  if (state.startsWith('paused-')) return;
+  if (state === 'flying' && flying) {
+    for (let i = 0; i < 4; i++) stepRing(flying, dt / 4);
+    if (flying.rest) settle(flying);
+  } else if (state === 'next') {
+    nextT -= dt;
+    if (nextT <= 0) { if (left > 0) state = 'aim'; else gameOver(); }
+  }
+}
+
+/* ---------- draw ---------- */
+function ell(cx, cy, rx, ry, a0 = 0, a1 = Math.PI * 2) { ctx.beginPath(); ctx.ellipse(cx, cy, Math.max(.1, rx), Math.max(.1, ry), 0, a0, a1); }
+function drawRing(r, part, z = r.z, glow = false) {
+  const e = ringShape(r.x, r.d, z);
+  const wob = r.grounded ? 1 : .8 + .2 * Math.abs(Math.sin(r.spin));
+  const ry = e.ry * wob, lw = Math.max(2, Math.min(7, 5 * e.s));
+  const [a0, a1] = part === 'back' ? [Math.PI, Math.PI * 2] : part === 'front' ? [0, Math.PI] : [0, Math.PI * 2];
+  if (glow) { ctx.strokeStyle = 'rgba(255,214,110,.55)'; ctx.lineWidth = lw + 5; ell(e.cx, e.cy, e.rx, ry, a0, a1); ctx.stroke(); }
+  ctx.strokeStyle = '#a77d3a'; ctx.lineWidth = lw + 1.5; ell(e.cx, e.cy + .8, e.rx, ry, a0, a1); ctx.stroke();
+  ctx.strokeStyle = '#e2bf73'; ctx.lineWidth = lw; ell(e.cx, e.cy, e.rx, ry, a0, a1); ctx.stroke();
+  // bamboo nodes
+  ctx.strokeStyle = 'rgba(120,84,36,.75)'; ctx.lineWidth = Math.max(1, lw * .5);
+  for (let i = 0; i < 8; i++) {
+    const t = i / 8 * Math.PI * 2 + r.spin * .3;
+    const nt = ((t % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    if (part === 'back' && nt < Math.PI) continue;
+    if (part === 'front' && nt >= Math.PI) continue;
+    const x = e.cx + Math.cos(t) * e.rx, y = e.cy + Math.sin(t) * ry;
+    ctx.beginPath(); ctx.moveTo(x - lw * .3, y - lw * .45); ctx.lineTo(x + lw * .3, y + lw * .45); ctx.stroke();
+  }
+}
+function cyl(bx, by, rw, h, side, light, topCol) {
+  const g = ctx.createLinearGradient(bx - rw, 0, bx + rw, 0);
+  g.addColorStop(0, side); g.addColorStop(.35, light); g.addColorStop(1, side);
+  ctx.fillStyle = g; ctx.fillRect(bx - rw, by - h, rw * 2, h);
+  ell(bx, by, rw, rw * .3, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = topCol; ell(bx, by - h, rw, rw * .3); ctx.fill();
+}
+function drawPrize(p, t) {
+  const b = proj(p.x, p.d), s = b.s, bx = b.x, by = b.y;
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ell(bx + 2 * s, by + 1.5 * s, p.r * s * 1.25, p.r * s * .4); ctx.fill();
+  if (p.t === 'can') {
+    const rw = 8 * s, h = 26 * s;
+    cyl(bx, by, rw, h, p.c[0], p.c[1], '#d9dde3');
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(bx - rw, by - h * .62, rw * 2, h * .22);
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ell(bx + rw * .2, by - h, rw * .35, rw * .12); ctx.fill();
+  } else if (p.t === 'ramune') {
+    const rw = 7 * s, h = 26 * s, nw = 3.6 * s, nh = 40 * s;
+    ctx.fillStyle = 'rgba(140,215,225,.85)';
+    ctx.beginPath(); ctx.moveTo(bx - rw, by); ctx.lineTo(bx - rw, by - h); ctx.quadraticCurveTo(bx - rw, by - h - 4 * s, bx - nw, by - 31 * s);
+    ctx.lineTo(bx - nw, by - nh); ctx.lineTo(bx + nw, by - nh); ctx.lineTo(bx + nw, by - 31 * s); ctx.quadraticCurveTo(bx + rw, by - h - 4 * s, bx + rw, by - h);
+    ctx.lineTo(bx + rw, by); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(70,150,175,.45)'; ctx.fillRect(bx - rw, by - h * .55, rw * 2, h * .3);
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(bx - rw * .6, by - h * .95, rw * .3, h * .85);
+    ctx.fillStyle = 'rgba(230,250,255,.95)'; ctx.beginPath(); ctx.arc(bx, by - 34 * s, nw * .85, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3b6fd8'; ctx.fillRect(bx - nw * 1.1, by - nh - 2.5 * s, nw * 2.2, 3 * s);
+  } else if (p.t === 'duck') {
+    const by2 = by - 8 * s;
+    ctx.fillStyle = '#ffd23a'; ell(bx, by2, 11 * s, 8 * s); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx + 3 * s, by - 17 * s, 6.2 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f08a1c'; ell(bx + 8.5 * s, by - 16 * s, 3.4 * s, 1.8 * s); ctx.fill();
+    ctx.fillStyle = '#1d1d1d'; ctx.beginPath(); ctx.arc(bx + 5 * s, by - 19 * s, 1.1 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(200,140,20,.7)'; ctx.lineWidth = 1.2 * s; ctx.beginPath(); ctx.arc(bx - 2 * s, by2, 5 * s, .2, 2.4); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.4)'; ell(bx - 4 * s, by2 - 3 * s, 4 * s, 2 * s); ctx.fill();
+  } else if (p.t === 'cat') {
+    const wv = Math.sin(t * 3 + p.wob) * .25;
+    ctx.fillStyle = '#fbf7f0';
+    ctx.beginPath(); ctx.moveTo(bx - 11 * s, by); ctx.quadraticCurveTo(bx - 12 * s, by - 18 * s, bx - 6 * s, by - 21 * s);
+    ctx.lineTo(bx + 6 * s, by - 21 * s); ctx.quadraticCurveTo(bx + 12 * s, by - 18 * s, bx + 11 * s, by); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx, by - 25 * s, 8.5 * s, 0, Math.PI * 2); ctx.fill();
+    for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(bx + sd * 7.5 * s, by - 28 * s); ctx.lineTo(bx + sd * 6 * s, by - 35 * s); ctx.lineTo(bx + sd * 2.5 * s, by - 31.5 * s); ctx.closePath(); ctx.fill(); }
+    ctx.save(); ctx.translate(bx - 9 * s, by - 22 * s); ctx.rotate(-.3 + wv);
+    ctx.beginPath(); ctx.ellipse(0, -5 * s, 3 * s, 6 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = Math.max(.8, 1.1 * s);
+    for (const sd of [-1, 1]) { ctx.beginPath(); ctx.arc(bx + sd * 3.3 * s, by - 25.5 * s, 1.8 * s, Math.PI * .15, Math.PI * .85); ctx.stroke(); }
+    ctx.fillStyle = '#d93a32'; ctx.fillRect(bx - 8 * s, by - 18.5 * s, 16 * s, 2.4 * s);
+    ctx.fillStyle = '#f2c230'; ctx.beginPath(); ctx.arc(bx, by - 15.5 * s, 2.6 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f2c230'; ell(bx, by - 7 * s, 5 * s, 3.4 * s); ctx.fill();
+    ctx.fillStyle = '#b8862a'; ctx.font = `900 ${Math.max(5, 4.5 * s)}px "Chiron GoRound TC", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('福', bx, by - 7 * s);
+  } else if (p.t === 'box') {
+    const w = 15 * s, h = 13 * s, dep = 7 * s;
+    ctx.fillStyle = p.c[1]; ctx.beginPath(); ctx.moveTo(bx - w, by - h); ctx.lineTo(bx - w + dep * .6, by - h - dep); ctx.lineTo(bx + w + dep * .6, by - h - dep); ctx.lineTo(bx + w, by - h); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = p.c[0]; ctx.fillRect(bx - w, by - h, w * 2, h);
+    ctx.fillStyle = '#ffe07a'; ctx.fillRect(bx - 1.6 * s, by - h, 3.2 * s, h);
+    ctx.beginPath(); ctx.moveTo(bx - 1.6 * s, by - h); ctx.lineTo(bx - 1.6 * s + dep * .6, by - h - dep); ctx.lineTo(bx + 1.6 * s + dep * .6, by - h - dep); ctx.lineTo(bx + 1.6 * s, by - h); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx + dep * .3 - 3 * s, by - h - dep * .5 - 2 * s, 3.4 * s, 2 * s, -.4, 0, Math.PI * 2); ctx.ellipse(bx + dep * .3 + 3 * s, by - h - dep * .5 - 2 * s, 3.4 * s, 2 * s, .4, 0, Math.PI * 2); ctx.fill();
+  }
+}
+function drawStall(t) {
+  const wl = proj(-SIDE, WALL_D), wr = proj(SIDE, WALL_D), nl = proj(-SIDE, -60), nr = proj(SIDE, -60);
+  // night sky and lantern string
+  ctx.fillStyle = '#140f1c'; ctx.fillRect(0, 0, W, H);
+  // back wall
+  ctx.fillStyle = '#6b4527'; ctx.fillRect(wl.x, 0, wr.x - wl.x, wl.y);
+  ctx.fillStyle = 'rgba(0,0,0,.18)'; for (let x = wl.x; x < wr.x; x += 26) ctx.fillRect(x, 0, 1.5, wl.y);
+  // side boards
+  ctx.fillStyle = '#4a2f1c';
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(wl.x, 0); ctx.lineTo(wl.x, wl.y); ctx.lineTo(nl.x, nl.y); ctx.lineTo(0, nl.y); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(W, 0); ctx.lineTo(wr.x, 0); ctx.lineTo(wr.x, wr.y); ctx.lineTo(nr.x, nr.y); ctx.lineTo(W, nr.y); ctx.closePath(); ctx.fill();
+  // turf floor with row bands
+  ctx.fillStyle = '#2f8f4e';
+  ctx.beginPath(); ctx.moveTo(wl.x, wl.y); ctx.lineTo(wr.x, wr.y); ctx.lineTo(nr.x, nr.y); ctx.lineTo(nl.x, nl.y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.05)';
+  ROWS.forEach((d, i) => {
+    if (i % 2) return;
+    const a = proj(-SIDE, d - 32), b = proj(SIDE, d - 32), c = proj(SIDE, d + 32), e = proj(-SIDE, d + 32);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(e.x, e.y); ctx.closePath(); ctx.fill();
+  });
+  // sign painted on the wall
+  const sy = wl.y * .52;
+  ctx.fillStyle = '#f4efe2'; ctx.fillRect(W / 2 - 62, sy - 20, 124, 40);
+  ctx.strokeStyle = '#b98a52'; ctx.lineWidth = 3; ctx.strokeRect(W / 2 - 62, sy - 20, 124, 40);
+  ctx.fillStyle = '#e23b2e'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '900 20px "Chiron GoRound TC", sans-serif'; ctx.fillText('套圈圈', W / 2, sy - 3);
+  ctx.fillStyle = '#1f2a44'; ctx.font = '700 10px "LXGW WenKai TC", serif'; ctx.fillText('十個圈一局', W / 2, sy + 12);
+  // lanterns along a sagging string
+  ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1;
+  ctx.beginPath(); for (let i = 0; i <= 20; i++) { const x = i / 20 * W, y = 10 + Math.sin(i / 20 * Math.PI) * 16; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke();
+  for (let i = 1; i < 8; i++) {
+    const x = i / 8 * W, y = 10 + Math.sin(i / 8 * Math.PI) * 16 + 8, c = i % 2 ? '#e23b2e' : '#ffb648';
+    const gl = ctx.createRadialGradient(x, y, 2, x, y, 26);
+    gl.addColorStop(0, i % 2 ? 'rgba(255,90,60,.35)' : 'rgba(255,190,90,.35)'); gl.addColorStop(1, 'rgba(255,120,60,0)');
+    ctx.fillStyle = gl; ctx.fillRect(x - 26, y - 26, 52, 52);
+    ctx.fillStyle = c; ell(x, y, 6, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(x - 4, y - 9, 8, 2); ctx.fillRect(x - 4, y + 7, 8, 2);
+  }
+  // the rope you throw from behind
+  const r0 = proj(-SIDE, -8), r1 = proj(SIDE, -8);
+  for (let i = 0; i < 14; i++) {
+    const a = i / 14, b = (i + 1) / 14;
+    ctx.strokeStyle = i % 2 ? '#f4efe2' : '#e23b2e'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(r0.x + (r1.x - r0.x) * a, r0.y - 8); ctx.lineTo(r0.x + (r1.x - r0.x) * b, r0.y - 8); ctx.stroke();
+  }
+}
+function drawAim(t) {
+  if (state !== 'aim') return;
+  const base = proj(START.x, START.d, START.z);
+  let off = { x: 0, y: 0 }, tgt = null;
+  if (aim) {
+    tgt = aimFrom(aim);
+    const dx = aim.cx - aim.x0, dy = aim.cy - aim.y0, l = Math.hypot(dx, dy), k = l > 60 ? 60 / l : 1;
+    off = { x: dx * k * .5, y: Math.max(0, dy * k * .5) };
+  }
+  if (tgt) {
+    // only the first part of the arc is shown, the rest is up to your judgement
+    const r = makeRing(tgt.angle, tgt.range);
+    ctx.fillStyle = 'rgba(255,243,224,.85)';
+    for (let i = 1; i <= 12; i++) {
+      const tt = i * .028, x = r.x + r.vx * tt, d = r.d + r.vd * tt, z = r.z + r.vz * tt - G * tt * tt / 2;
+      const q = proj(x, d, z);
+      ctx.globalAlpha = 1 - i / 14; ctx.beginPath(); ctx.arc(q.x, q.y, Math.max(1.2, 2.6 * q.s), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    const bw = 64, bx = W / 2 - bw / 2, by2 = H - 22;
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(bx, by2, bw, 7);
+    ctx.fillStyle = tgt.power > .85 ? '#ff7a59' : '#e2bf73'; ctx.fillRect(bx, by2, bw * tgt.power, 7);
+  }
+  const fake = { x: START.x, d: START.d, spin: t * .4, grounded: true };
+  ctx.save(); ctx.translate(off.x, off.y);
+  drawRing(fake, 'all', START.z);
+  ctx.restore();
+  if (!aim && left === 10 && score === 0) {
+    ctx.fillStyle = 'rgba(255,243,224,.8)'; ctx.font = '700 13px "Chiron GoRound TC", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('按住往下拉，放開丟出去', W / 2, base.y - 34);
+  }
+}
+function draw(t) {
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0);
+  drawStall(t);
+  // ground shadows first, then everything sorted back to front
+  const all = [];
+  for (const p of prizes) all.push({ d: p.d, f: () => {
+    const r = p.ring;
+    if (r) drawRing(r, 'back', 1.5, true);
+    drawPrize(p, t);
+    if (r) drawRing(r, 'front', 1.5, true);
+  } });
+  for (const r of rings) if (!r.around || !r.around.ring || r.around.ring !== r) all.push({ d: r.d + .1, f: () => drawRing(r, 'all', 0) });
+  if (flying) {
+    const sh = ringShape(flying.x, flying.d, 0);
+    ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = Math.max(2, 4 * sh.s); ell(sh.cx, sh.cy, sh.rx, sh.ry); ctx.stroke();
+    all.push({ d: flying.d - .1, f: () => drawRing(flying, 'all') });
+  }
+  all.sort((a, b) => b.d - a.d).forEach(o => o.f());
+  drawAim(t);
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
+  update(dt); draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+layout(); hud();
+requestAnimationFrame(frame);
+})();
+</script>
