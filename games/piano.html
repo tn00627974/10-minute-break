@@ -74,6 +74,7 @@ body{
 .btn{appearance:none;border:0;border-radius:6px;background:var(--ivory);color:var(--ebony);font:900 1rem var(--serif);padding:10px 22px;cursor:pointer;letter-spacing:.14em}
 .keys{font-size:.78rem;color:var(--muted)}
 .rec{color:var(--brass);font-weight:900}
+.keys input{width:2em;margin:0 6px 0 3px;border:1px solid #3a4468;border-radius:4px;background:#0a0f1d;color:var(--text);font:700 .8rem ui-monospace,Menlo,Consolas,monospace;text-align:center;padding:2px 0}
 button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 </style>
 
@@ -88,7 +89,8 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
     <h1 id="ov-title">月光鋼琴</h1>
     <div class="menu" id="menu">
       <p id="ov-text">只踩黑鍵，由下往上依序點，每點一下就彈出下一個音。點到白鍵或漏掉黑鍵就結束，越彈越快。</p>
-      <div class="row"><button class="btn" id="ov-btn">點最下面的「開始」</button><span class="keys">電腦可用 D F J K 對應四條鍵</span></div>
+      <div class="row"><button class="btn" id="ov-btn">點最下面的「開始」</button></div>
+      <div class="keys" id="keyset">鍵盤（點格子再按新鍵）：四條鍵<input readonly><input readonly><input readonly><input readonly>重來<input readonly>音效<input readonly></div>
       <div class="pieces" id="pieces" role="group" aria-label="曲目"></div>
       <button class="ghost small" id="song-del" type="button" hidden></button>
     </div>
@@ -343,6 +345,7 @@ function gameOver() {
   state = 'over'; overAt = performance.now();
   const rec = hits > best;
   try { parent.postMessage({ type: 'arcade:score', game: 'piano', score: hits }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
+  try { parent.postMessage({ type: 'arcade:score', game: 'piano', score: hits }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = hits; store.set('piano.best', best); bestEl.textContent = best; }
   ovTitle.textContent = fail && fail.missed ? '漏了一個鍵' : '踩到白鍵了';
   ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `《${songOf(melody).name}》彈了 ${hits} 個音，最高 ${best} 個。換首曲子或直接再彈一次。`;
@@ -368,14 +371,32 @@ stage.addEventListener('pointerdown', e => {
   press(Math.max(0, Math.min(LANES - 1, Math.floor(x / LW))), y);
 });
 ovBtn.addEventListener('click', () => { if (state === 'over') restart(); else ov.hidden = true; ovBtn.blur(); });
-const KEYMAP = { KeyD: 0, KeyF: 1, KeyJ: 2, KeyK: 3 };
+// 按鍵設定：6 個字依序是 四條鍵、重來、音效，存在這台瀏覽器
+const DEF_KEYS = 'DFJKRM';
+let keys = store.get('piano.keys', DEF_KEYS);
+if (typeof keys !== 'string' || keys.length !== 6) keys = DEF_KEYS;
+const keyOf = e => e.code.replace(/^Key|^Digit/, '');          // 用 code，中文輸入法開著也抓得到
+const keyInputs = [...document.querySelectorAll('#keyset input')];
+const showKeys = () => keyInputs.forEach((x, i) => { x.value = keys[i]; });
+showKeys();
+keyInputs.forEach((inp, i) => inp.addEventListener('keydown', e => {
+  const k = keyOf(e);
+  if (!/^[A-Z0-9]$/.test(k)) return;                            // 只收英文字母和數字，Tab 照常能用
+  e.preventDefault();
+  const a = [...keys], j = a.indexOf(k);
+  if (j >= 0) a[j] = a[i];                                      // 已經被用掉的鍵就互換
+  a[i] = k; keys = a.join(''); store.set('piano.keys', keys); showKeys();
+}));
 addEventListener('keydown', e => {
   if (!editor.hidden || (e.target.closest && e.target.closest('input, textarea'))) return;
-  if (e.code in KEYMAP && !e.repeat) {
+  const n = keys.indexOf(keyOf(e));
+  if (n >= 0 && !e.repeat) {
     e.preventDefault();
+    if (n === 4) { if (state !== 'ready') restart(); return; }
+    if (n === 5) { setMute(!muted); if (!muted) note(72); return; }
     if (state === 'over') { if (performance.now() - overAt > 600) restart(); return; }
     if (state === 'ready') ov.hidden = true;
-    press(KEYMAP[e.code], null);
+    press(n, null);
   }
   if ((e.code === 'Space' || e.code === 'Enter') && state === 'over' && performance.now() - overAt > 600) { e.preventDefault(); restart(); }
 });
