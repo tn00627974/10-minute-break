@@ -216,7 +216,7 @@ function layout() {
 function hud() { ringsEl.textContent = left; scoreEl.textContent = score; }
 function reset() { layout(); rings = []; flying = null; aim = null; won = []; score = 0; left = 10; hud(); }
 function start() {
-  if (state === 'paused') { resume(); return; }
+  if (state.startsWith('paused-')) { resume(); return; }   // 暫停時狀態是 paused-aim / paused-flying…，按鈕也要能繼續
   if (state !== 'ready' && state !== 'over') return;
   reset(); state = 'aim'; ov.hidden = true; ovBtn.blur();
 }
