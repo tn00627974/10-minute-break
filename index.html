@@ -147,6 +147,23 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .dialog-actions button{appearance:none;border-radius:999px;padding:9px 18px;font:700 .9rem var(--body);cursor:pointer}
 .btn-ghost{border:1.5px solid var(--line);background:transparent;color:var(--ink)}
 .btn-main{border:0;background:var(--accent);color:var(--on-accent)}
+/* 排行榜頁（#rank/<gameId>） */
+body.ranking{overflow:hidden}
+.card .top{cursor:pointer}
+.card .top:hover b{text-decoration:underline}
+.rankpage{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;background-color:var(--board);background-image:radial-gradient(circle,var(--hole) 2.4px,transparent 3px);background-size:26px 26px;background-position:13px 13px}
+.rp-body{flex:1;min-height:0;overflow-y:auto;width:min(560px,100%);margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:14px max(16px,env(safe-area-inset-left,0px)) calc(24px + env(safe-area-inset-bottom,0px))}
+.rp-tabs{display:flex;align-items:center;gap:6px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
+.rp-tabs::-webkit-scrollbar{display:none}
+.rp-cat{flex:none;margin-left:6px;font-size:.72rem;font-weight:700;letter-spacing:.1em;color:var(--muted)}
+.rp-cat:first-child{margin-left:0}
+.rp-tabs .chip{flex:none;padding:5px 11px;font-size:.84rem}
+.rp-card{flex:none;border-radius:14px;background:var(--card);color:var(--ink);box-shadow:0 4px 0 var(--shadow);overflow:hidden}
+.rp-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:14px 16px 4px}
+.rp-head h3{margin:0;font-family:var(--display);font-weight:900;font-size:1.15rem}
+.rp-head small{font-family:var(--num);font-size:.78rem;color:var(--muted);white-space:nowrap}
+.rp-card .rank-tabs{padding:8px 12px 0}
+@media (min-width:640px){.rp-tabs{flex-wrap:wrap;overflow:visible}.rp-cat{flex-basis:100%;margin:6px 0 0}.rp-cat:first-child{margin-top:0}}
 .random.alt{background:var(--card);color:var(--ink);border:3px solid var(--ink);font-weight:900}
 .dialog.all{width:min(440px,100%);max-height:calc(100% - 32px);gap:10px}
 .all-head{display:flex;align-items:center;justify-content:space-between}
@@ -186,7 +203,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   </div>
 
   <div id="shelves"></div>
-  <p class="foot">「我的最高」只存在這台裝置的瀏覽器裡；「第一名」是線上排行榜，玩完會自動上傳你的成績。在遊戲裡按右上角的「排行榜」可以看前 20 名。</p>
+  <p class="foot">「我的最高」只存在這台裝置的瀏覽器裡；「第一名」是線上排行榜，玩完會自動上傳你的成績。點卡片上的「第一名」可以看完整排行榜，在遊戲裡按右上角的「排行榜」可以看前 20 名。</p>
 </div>
 
 <section class="player" id="player" hidden aria-label="遊戲畫面">
@@ -209,6 +226,22 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   </div>
 </section>
 
+<section class="rankpage" id="rankpage" hidden aria-label="排行榜">
+  <div class="pbar">
+    <button class="pbtn solid" id="rp-back" type="button">← 大廳</button>
+    <h2>排行榜</h2>
+  </div>
+  <div class="rp-body">
+    <nav class="rp-tabs" id="rp-tabs" aria-label="選擇遊戲"></nav>
+    <div class="rp-card">
+      <div class="rp-head"><h3 id="rp-title"></h3><small id="rp-sub"></small></div>
+      <div class="rank-tabs" id="rp-levels" hidden></div>
+      <ol class="rank-list" id="rp-list"></ol>
+      <div class="rank-note" id="rp-note" hidden></div>
+      <div class="rank-me" id="rp-me"></div>
+    </div>
+  </div>
+</section>
 <div class="dialog-back" id="name-dialog" hidden>
   <form class="dialog" id="name-form" aria-labelledby="name-title">
     <h3 id="name-title">上排行榜要取個名字</h3>
@@ -504,7 +537,9 @@ addEventListener('message', async e => {
     toast(`已上傳排行榜：${name} ${fmt(d.game, d.score)}`);
     const cache = readTops(), c = cache[d.game];
     if (c && (!c.top || better(d.game, d.score, c.top.score))) { c.top = { name, score: d.score }; saveTops(cache); }
-    if (!$('rank-panel').hidden && rankGame === d.game) showBoard(d.game);
+    boardCache.clear();
+    if (!$('rank-panel').hidden && panelUI.g === d.game) showBoard(d.game);
+    if (rpOpen && rp.ui.g === d.game) showBoard(d.game, rp.ui, RP_N);
   } catch (err) {
     console.warn('排行榜上傳失敗', err);
     toast('排行榜暫時連不上，這次沒上傳成功');
@@ -512,35 +547,43 @@ addEventListener('message', async e => {
 });
 
 /* ---------- 遊戲右上角的前 20 名 ---------- */
-let rankGame = null;
 function currentGameId() {
   const id = decodeURIComponent(location.hash.slice(1));
   return id && document.querySelector(`.card[data-id="${CSS.escape(id)}"]`) ? id : null;
 }
-async function showBoard(g) {
-  rankGame = g;
-  const list = $('rank-list'), note = $('rank-note'), meEl = $('rank-me'), me = local.get('arcade.name');
-  list.innerHTML = ''; note.hidden = false; note.textContent = '載入中…'; meEl.textContent = '';
+const panelUI = { list: $('rank-list'), note: $('rank-note'), me: $('rank-me'), g: null };
+const boardCache = new Map();                                   // 榜單快取 3 分鐘；自己上傳成績後會清掉
+async function boardRows(g, n) {
+  const k = g + ':' + n, c = boardCache.get(k);
+  if (c && Date.now() - c.at < TTL) return c.rows;
+  const rows = await getBoard(g, n);
+  boardCache.set(k, { rows, at: Date.now() });
+  return rows;
+}
+async function showBoard(g, ui = panelUI, n = 20) {             // ui：遊戲內面板或排行榜頁各自的容器
+  ui.g = g;
+  const me = local.get('arcade.name');
+  ui.list.innerHTML = ''; ui.note.hidden = false; ui.note.textContent = '載入中…'; ui.me.textContent = '';
   try {
-    const rows = await getBoard(g, 20);
-    if (rankGame !== g) return;
-    note.hidden = rows.length > 0;
-    if (!rows.length) note.textContent = '還沒有人上榜，玩一局搶第一名！';
+    const rows = await boardRows(g, n);
+    if (ui.g !== g) return;
+    ui.note.hidden = rows.length > 0;
+    if (!rows.length) ui.note.textContent = '還沒有人上榜，玩一局搶第一名！';
     rows.forEach((r, i) => {
       const li = document.createElement('li');
       if (r.name === me) li.className = 'me';
       for (const [cls, text] of [['no', i + 1], ['nm', r.name], ['sc', fmt(g, r.score)]]) {
-        const s = document.createElement('span'); s.className = cls; s.textContent = text; li.append(s);
+        const sp = document.createElement('span'); sp.className = cls; sp.textContent = text; li.append(sp);
       }
-      list.append(li);
+      ui.list.append(li);
     });
     const mine = rows.findIndex(r => r.name === me);
-    meEl.textContent = !me ? '玩完一局就能取名字上榜'
-      : mine >= 0 ? `你是第 ${mine + 1} 名（${me}）` : `你的名字是「${me}」，還沒進前 20 名`;
-    if (isMock) meEl.textContent += '・目前是本機測試資料';
+    ui.me.textContent = !me ? '玩完一局就能取名字上榜'
+      : mine >= 0 ? `你是第 ${mine + 1} 名（${me}）` : `你的名字是「${me}」，還沒進前 ${n} 名`;
+    if (isMock) ui.me.textContent += '・目前是本機測試資料';
   } catch (e) {
-    if (rankGame !== g) return;
-    note.hidden = false; note.textContent = '排行榜暫時連不上，稍後再試。';
+    if (ui.g !== g) return;
+    ui.note.hidden = false; ui.note.textContent = '排行榜暫時連不上，稍後再試。';
   }
 }
 function openRank() {
@@ -562,13 +605,13 @@ function openRank() {
   } else { tabs.hidden = true; showBoard(id); }
   $('rank-panel').hidden = false; $('rank-btn').setAttribute('aria-expanded', 'true');
 }
-function closeRank() { $('rank-panel').hidden = true; $('rank-btn').setAttribute('aria-expanded', 'false'); rankGame = null; }
+function closeRank() { $('rank-panel').hidden = true; $('rank-btn').setAttribute('aria-expanded', 'false'); panelUI.g = null; }
 $('rank-btn').addEventListener('click', () => ($('rank-panel').hidden ? openRank() : closeRank()));
 $('rank-close').addEventListener('click', closeRank);
 addEventListener('keydown', e => { if (e.key === 'Escape' && !$('rank-panel').hidden) closeRank(); });
-addEventListener('hashchange', () => { closeRank(); if (!currentGameId()) loadTops(); });
+addEventListener('hashchange', () => { closeRank(); syncRankPage(); if (!currentGameId()) loadTops(); });
 
-/* ---------- 總排行榜：所有遊戲的第一名，依類型分組，點一列直接去玩 ---------- */
+/* ---------- 總排行榜：所有遊戲的第一名，依類型分組，點一列看該款完整排行榜 ---------- */
 const allDialog = $('all-dialog'), allList = $('all-list'), allTabs = $('all-tabs');
 function openAll() {
   const me = local.get('arcade.name'), rows = [], cats = ['全部'];
@@ -590,7 +633,7 @@ function openAll() {
   const cache = readTops(), now = Date.now();
   Promise.all(rows.map(async r => {
     const el = document.createElement('a');
-    el.className = 'all-row'; el.href = '#' + r.id; el.dataset.cat = r.cat;
+    el.className = 'all-row'; el.href = '#rank/' + r.g; el.dataset.cat = r.cat;
     el.innerHTML = '<span class="all-tag"></span><span class="all-name"><span></span><small>載入中…</small></span><span class="all-score none">—</span>';
     el.querySelector('.all-tag').textContent = r.cat;
     el.querySelector('.all-name span').textContent = r.title;
@@ -611,6 +654,70 @@ $('all-close').addEventListener('click', closeAll);
 allDialog.addEventListener('click', e => { if (e.target === allDialog || e.target.closest('.all-row')) closeAll(); });
 addEventListener('keydown', e => { if (e.key === 'Escape' && !allDialog.hidden) closeAll(); });
 
+/* ---------- 排行榜頁：#rank/<遊戲 id 或 mines-easy|mid|hard>，上面用遊戲當標籤 ---------- */
+const rp = { page: $('rankpage'), tabs: $('rp-tabs'), levels: $('rp-levels'), title: $('rp-title'), sub: $('rp-sub'),
+  ui: { list: $('rp-list'), note: $('rp-note'), me: $('rp-me'), g: null } };
+const RP_N = 50;
+let rpOpen = false;
+const minesLevel = () => { const v = local.get('arcade.rank.mines'); return MINES.some(([b]) => b === v) ? v : 'mines-easy'; };
+function rpGo(board) { history.replaceState(null, '', '#rank/' + board); syncRankPage(); }   // 切標籤不新增瀏覽紀錄，「上一頁」一次就回大廳
+function buildRankTabs() {
+  rp.tabs.innerHTML = '';
+  document.querySelectorAll('.shelf').forEach(sh => {
+    const cat = document.createElement('span'); cat.className = 'rp-cat'; cat.textContent = sh.dataset.cat; rp.tabs.append(cat);
+    sh.querySelectorAll('.card').forEach(a => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.dataset.id = a.dataset.id; b.textContent = a.querySelector('.name').textContent;
+      b.onclick = () => rpGo(a.dataset.id === 'mines' ? minesLevel() : a.dataset.id);
+      rp.tabs.append(b);
+    });
+  });
+}
+function syncRankPage() {
+  const m = decodeURIComponent(location.hash).match(/^#rank(?:\/(.*))?$/);
+  if (!m) {
+    if (rpOpen) { rpOpen = false; rp.page.hidden = true; document.body.classList.remove('ranking'); $('lobby').inert = !$('player').hidden; }
+    return;
+  }
+  if (!rpOpen) {
+    rpOpen = true; rp.page.hidden = false; document.body.classList.add('ranking'); $('lobby').inert = true;
+    if (!rp.tabs.children.length) buildRankTabs();
+  }
+  const cards = [...document.querySelectorAll('.card')];
+  let board = m[1] || local.get('arcade.rank') || '', gid = board.startsWith('mines-') ? 'mines' : board;
+  if (!cards.some(c => c.dataset.id === gid)) gid = cards[0].dataset.id;            // 網址亂打就退回第一款
+  if (gid === 'mines') { if (!MINES.some(([b]) => b === board)) board = minesLevel(); local.set('arcade.rank.mines', board); }
+  else board = gid;
+  local.set('arcade.rank', board);
+  if (location.hash !== '#rank/' + board) history.replaceState(null, '', '#rank/' + board);
+
+  const card = cards.find(c => c.dataset.id === gid), title = card.querySelector('.name').textContent;
+  rp.tabs.querySelectorAll('.chip').forEach(b => {
+    const on = b.dataset.id === gid; b.setAttribute('aria-pressed', String(on));
+    if (on) b.scrollIntoView({ inline: 'center', block: 'nearest' });
+  });
+  rp.levels.hidden = gid !== 'mines';
+  if (gid === 'mines') {
+    rp.levels.innerHTML = '';
+    for (const [b, label] of MINES) {
+      const x = document.createElement('button');
+      x.type = 'button'; x.textContent = label; x.setAttribute('aria-pressed', String(b === board)); x.onclick = () => rpGo(b);
+      rp.levels.append(x);
+    }
+  }
+  rp.title.textContent = gid === 'mines' ? `${title}・${MINES.find(([b]) => b === board)[1]}` : title;
+  rp.sub.textContent = `${card.closest('.shelf').dataset.cat} · ${board} · 前 ${RP_N} 名`;
+  showBoard(board, rp.ui, RP_N);
+}
+$('rp-back').addEventListener('click', () => { location.hash = ''; });
+addEventListener('keydown', e => { if (e.key === 'Escape' && rpOpen && $('all-dialog').hidden && $('name-dialog').hidden) location.hash = ''; });
+document.addEventListener('click', e => {                         // 大廳卡片上的「第一名」→ 該款排行榜頁
+  const t = e.target.closest('.card .top'); if (!t) return;
+  e.preventDefault(); e.stopPropagation();
+  location.hash = '#rank/' + boardOf(t.closest('.card').dataset.id);
+}, true);
+
+syncRankPage();
 loadTops();
 </script>
 
