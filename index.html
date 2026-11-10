@@ -179,7 +179,24 @@ body.ranking{overflow:hidden}
 .all-score{font-family:var(--num);font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
 .all-score.none{font-family:var(--body);font-weight:500;font-size:.8rem;color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 14px));z-index:70;transform:translateX(-50%);max-width:calc(100% - 32px);padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--card);font-size:.88rem;font-weight:700;box-shadow:0 10px 24px rgba(0,0,0,.3)}
-@media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
+/* 最新動態：各遊戲第一名的即時變化 */
+.feed{border-radius:14px;background:var(--card);box-shadow:0 4px 0 var(--shadow);padding:12px 12px 10px}
+.feed h2{margin:0 4px 6px;font-family:var(--display);font-weight:900;font-size:1.1rem;letter-spacing:.06em}
+.feed-list{list-style:none;margin:0;padding:0}
+.feed-list a{display:grid;grid-template-columns:4.6em minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 6px;border-radius:8px;color:inherit;text-decoration:none}
+.feed-list li:nth-child(odd) a{background:color-mix(in srgb,var(--line) 30%,transparent)}
+.feed-list li.me a{outline:2px solid var(--accent);outline-offset:-2px}
+.feed-list li.fresh a{animation:feed-in 2.4s ease-out}
+@keyframes feed-in{from{background:color-mix(in srgb,var(--sign) 70%,transparent)}to{background:transparent}}
+.feed time{font-family:var(--num);font-size:.78rem;color:var(--muted);white-space:nowrap}
+.fd-text{min-width:0;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fd-text .g{font-weight:700;color:var(--accent)}
+.fd-text .beat{color:var(--muted)}
+.fd-score{font-family:var(--num);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fd-new{margin-right:6px;padding:0 7px;border-radius:999px;background:var(--sign);color:var(--sign-ink);font-size:.7rem;font-weight:900}
+.feed-note{margin:0;padding:6px;font-size:.86rem;color:var(--muted)}
+@media (max-width:520px){.feed-list li:nth-child(n+5){display:none}.feed-list a{grid-template-columns:3.8em minmax(0,1fr) auto;gap:8px}}
+@media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}.feed-list li.fresh a{animation:none}}
 </style>
 
 <div class="wrap" id="lobby">
@@ -201,6 +218,12 @@ body.ranking{overflow:hidden}
       隨便玩一款
     </button>
   </div>
+
+  <section class="feed" aria-labelledby="feed-title">
+    <h2 id="feed-title">最新動態</h2>
+    <ol class="feed-list" id="feed-list"></ol>
+    <p class="feed-note" id="feed-note">載入中…</p>
+  </section>
 
   <div id="shelves"></div>
   <p class="foot">「我的最高」只存在這台裝置的瀏覽器裡；「第一名」是線上排行榜，玩完會自動上傳你的成績。點卡片上的「第一名」可以看完整排行榜，在遊戲裡按右上角的「排行榜」可以看前 20 名。</p>
@@ -441,7 +464,7 @@ renderChips(); renderShelves(); applyFilter(); refreshCards(); route();
 
 <script type="module">
 /* ---------- 線上排行榜：卡片上的第一名、遊戲裡的前 20 名、上傳成績 ---------- */
-import { submitScore, getBoard, cleanName, isMock } from './leaderboard.js';
+import { submitScore, getBoard, cleanName, isMock, watchTop } from './leaderboard.js';
 
 const $ = id => document.getElementById(id);
 const local = {
@@ -716,6 +739,55 @@ document.addEventListener('click', e => {                         // 大廳卡�
   e.preventDefault(); e.stopPropagation();
   location.hash = '#rank/' + boardOf(t.closest('.card').dataset.id);
 }, true);
+
+/* ---------- 最新動態：監看每個榜的第一名，有人刷新就插到最上面 ---------- */
+const FEED_N = 6, known = {}, feed = [];
+function rel(at) {
+  if (!at) return '';
+  const m = Math.floor((Date.now() - at) / 60e3);
+  if (m < 1) return '剛剛';
+  if (m < 60) return `${m} 分鐘前`;
+  if (m < 1440) return `${Math.floor(m / 60)} 小時前`;
+  if (m < 10080) return `${Math.floor(m / 1440)} 天前`;
+  const d = new Date(at); return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+function renderFeed() {
+  const list = $('feed-list'), me = local.get('arcade.name');
+  list.innerHTML = ''; $('feed-note').hidden = feed.length > 0;
+  for (const it of feed) {
+    const li = document.createElement('li'), a = document.createElement('a');
+    li.className = (it.fresh ? 'fresh ' : '') + (it.name === me ? 'me' : '');
+    a.href = '#rank/' + it.b;
+    a.innerHTML = '<time></time><span class="fd-text"><span class="fd-new">新</span><b></b><span class="v"></span><span class="g"></span>第一名<span class="beat"></span></span><span class="fd-score"></span>';
+    const q = s => a.querySelector(s);                              // 玩家名字一律用 textContent 放
+    q('time').textContent = rel(it.at);
+    q('.fd-new').hidden = !it.isNew;
+    q('b').textContent = it.name;
+    q('.v').textContent = it.isNew ? ' 刷新' : ' 拿下';
+    q('.g').textContent = `《${it.t}》`;
+    q('.beat').textContent = it.prev ? `，打敗 ${it.prev}` : '';
+    q('.fd-score').textContent = fmt(it.b, it.score);
+    li.append(a); list.append(li);
+  }
+}
+function onTop(b, t, top) {
+  const old = known[b]; known[b] = top;
+  if (!top) { if (!feed.length) $('feed-note').textContent = '還沒有人上榜，玩一局搶第一名！'; return; }
+  if (old === undefined) feed.push({ b, t, ...top });              // 第一次收到：當作現況，不算新消息
+  else if (!old || better(b, top.score, old.score)) {               // 同分或分數沒變好就不算
+    feed.forEach(f => { f.fresh = false; });
+    feed.push({ b, t, ...top, at: top.at ?? Date.now(), isNew: true, fresh: true, prev: old && old.name !== top.name ? old.name : '' });
+  } else return;
+  feed.sort((x, y) => (y.at ?? 0) - (x.at ?? 0)); feed.length = Math.min(feed.length, FEED_N);
+  renderFeed();
+}
+function feedFail(e) { console.warn('最新動態連不上', e); $('feed-note').hidden = false; $('feed-note').textContent = '動態暫時連不上，重新整理再試一次'; }
+if (isMock) $('feed-note').textContent = '本機測試模式沒有即時動態';
+else document.querySelectorAll('.card').forEach(c => {
+  const t = c.querySelector('.name').textContent;
+  const boards = c.dataset.id === 'mines' ? MINES.map(([b, l]) => [b, `${t}・${l}`]) : [[c.dataset.id, t]];
+  for (const [b, bt] of boards) watchTop(b, top => onTop(b, bt, top), feedFail).catch(feedFail);
+});
 
 syncRankPage();
 loadTops();

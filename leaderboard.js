@@ -57,6 +57,18 @@ export async function submitScore(game, name, score) {
   return { improved: true, best: score };
 }
 
+// 即時監看第一名：cb({ name, score, at } | null)，只回報伺服器確認過的資料（離線快取、自己尚未送達的寫入都跳過）
+export async function watchTop(game, cb, onErr) {
+  const { F, db } = await firestore();
+  const q = F.query(F.collection(db, 'leaderboards', game, 'entries'),
+                    F.orderBy('score', isAsc(game) ? 'asc' : 'desc'), F.limit(1));
+  return F.onSnapshot(q, { includeMetadataChanges: true }, snap => {
+    if (snap.metadata.hasPendingWrites || snap.metadata.fromCache) return;
+    const d = snap.docs[0]?.data();
+    cb(d ? { name: d.name, score: d.score, at: d.updatedAt?.toMillis() ?? null } : null);
+  }, onErr);
+}
+
 // 前 n 名：[{ name, score }]
 export async function getBoard(game, n = 20) {
   if (isMock) {
