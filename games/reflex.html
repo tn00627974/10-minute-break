@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>紅綠燈反應王</title>
+<style>
+:root{--night:#17121f;--lamp:#ffb648;--lantern:#e23b2e;--kraft:#dcbd8c;--marker:#2b1d14;--text:#fff3e0;--muted:#c4b3c6;
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;color-scheme:dark}
+html{height:100%;box-sizing:border-box;background:var(--night)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 16px 14px;
+  background:radial-gradient(120% 50% at 50% 0%,#3a2232,var(--night) 70%);color:var(--text);font-family:var(--display);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.1rem;letter-spacing:.1em;white-space:nowrap;color:var(--lamp);text-shadow:0 0 12px rgba(255,182,72,.45)}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-weight:700;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid #4a3a52;background:transparent;color:var(--text);cursor:pointer;font-size:.9rem;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:14px;overflow:hidden;touch-action:none;background:#241c2c;box-shadow:0 0 0 1px #3a2c40,0 20px 50px rgba(0,0,0,.5)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%) rotate(-1deg);z-index:5;padding:20px 18px 16px;background:var(--kraft);color:var(--marker);box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-weight:900;font-size:1.55rem;letter-spacing:.08em;color:var(--lantern)}
+.overlay p{margin:0;font-size:.98rem;line-height:1.7}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--lantern);color:#fff;font:900 1rem var(--display);padding:10px 20px;cursor:pointer;letter-spacing:.08em;box-shadow:0 3px 0 #9c2018}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9c2018}
+.keys{font-size:.88rem;color:#6b5236}
+.rec{color:var(--lantern);font-weight:700}
+</style>
+</head>
+<body>
+<header class="hud">
+  <div class="brand">紅綠燈反應王</div>
+  <div class="stat"><span>回合</span><b id="round">1/5</b></div>
+  <div class="stat"><span>分數</span><b id="score">0</b></div>
+  <div class="stat"><span>最高</span><b id="best">0</b></div>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">紅綠燈 比誰手快</h1>
+    <p id="ov-text">紅燈時忍住，一變綠燈馬上點畫面。一局五回合，每回合 1000 分扣掉你的反應毫秒數；紅燈就偷跑，那一回合 0 分。</p>
+    <div class="row"><button class="btn" id="ov-btn">準備好了</button><span class="keys" id="ov-keys">電腦按空白鍵</span></div>
+  </section>
+</main>
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d'), ov = $('overlay'), ovBtn = $('ov-btn');
+
+let actx = null;
+function tone(f1, f2 = f1, dur = .12, type = 'triangle', vol = .06) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+
+/* ---------- 共用：寬 400 的畫布座標、結算與上傳 ---------- */
+const W = 400, GAME = 'reflex';
+let H = 640, S = 1, DPR = 1, state = 'ready', score = 0, overAt = 0, best = store.get(GAME + '.best', 0);
+$('best').textContent = best;
+function fit() {
+  const r = stage.getBoundingClientRect(); if (!r.width) return;
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S;
+}
+function finish(title, text) {
+  state = 'over'; overAt = performance.now();
+  const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: GAME, score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
+  if (rec) { best = score; store.set(GAME + '.best', best); $('best').textContent = best; }
+  $('ov-title').textContent = title;
+  $('ov-text').innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + text + `最高紀錄 ${best} 分。`;
+  ovBtn.textContent = '再來一局'; $('ov-keys').textContent = ''; ov.hidden = false;
+}
+const pos = e => { const r = stage.getBoundingClientRect(); return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S }; };
+
+/* ---------- 流程：red（等隨機秒數）→ green（計時）→ show（看成績）→ 下一回合 ---------- */
+const ROUNDS = 5;
+let phase = 'idle', round = 0, results = [], waitT = 0, goAt = 0, showT = 0, msg = '';
+function hud() { $('round').textContent = Math.min(round + 1, ROUNDS) + '/' + ROUNDS; $('score').textContent = score; }
+function next() { phase = 'red'; waitT = 1.5 + Math.random() * 2.5; msg = '等綠燈…'; hud(); }
+function start() { round = 0; score = 0; results = []; state = 'play'; next(); }
+function tap() {
+  if (state !== 'play' || phase === 'show') return;
+  let ms = null;
+  if (phase === 'green') { ms = Math.round(performance.now() - goAt); score += Math.max(0, 1000 - ms); msg = ms + ' 毫秒'; tone(700, 1100, .12, 'sine'); }
+  else { msg = '偷跑！這回合 0 分'; tone(200, 100, .3, 'sawtooth'); }
+  results.push(ms); round++; phase = 'show'; showT = 1.2; hud();
+}
+function update(dt) {
+  if (state !== 'play') return;
+  if (phase === 'red') { waitT -= dt; if (waitT <= 0) { phase = 'green'; goAt = performance.now(); msg = '點！'; tone(900, 900, .08, 'square', .04); } }
+  else if (phase === 'green' && performance.now() - goAt > 1000) tap();      // 超過一秒沒點，當 1000 毫秒
+  else if (phase === 'show') {
+    showT -= dt;
+    if (showT <= 0) {
+      if (round < ROUNDS) return next();
+      const ok = results.filter(v => v != null), avg = ok.length ? Math.round(ok.reduce((a, b) => a + b, 0) / ok.length) : 0;
+      finish('五回合結束', `這局 ${score} 分` + (ok.length ? `，平均反應 ${avg} 毫秒，` : '，'));
+    }
+  }
+}
+function draw() {
+  const green = phase === 'green';
+  ctx.fillStyle = green ? '#16432a' : '#3a1717'; ctx.fillRect(0, 0, W, H);
+  const cx = W / 2, top = H * .16;
+  ctx.fillStyle = '#17121f'; ctx.beginPath(); ctx.roundRect(cx - 62, top, 124, 250, 26); ctx.fill();     // 燈箱
+  ctx.fillStyle = '#17121f'; ctx.fillRect(cx - 8, top + 250, 16, H);
+  const lamp = (y, on, c) => { ctx.fillStyle = on ? c : '#2e2836'; ctx.beginPath(); ctx.arc(cx, y, 44, 0, 7); ctx.fill();
+    if (on) { const g = ctx.createRadialGradient(cx, y, 20, cx, y, 110); g.addColorStop(0, c + '88'); g.addColorStop(1, c + '00'); ctx.fillStyle = g; ctx.fillRect(cx - 110, y - 110, 220, 220); } };
+  lamp(top + 68, !green && state === 'play', '#e23b2e'); lamp(top + 182, green, '#3fb36b');
+  ctx.fillStyle = '#fff3e0'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '900 30px sans-serif';
+  if (state === 'play') ctx.fillText(msg, cx, top + 310);
+  ctx.font = '700 15px sans-serif';                                                                      // 每回合成績
+  results.forEach((v, i) => { ctx.fillStyle = v == null ? '#ff8a7a' : '#fff3e0'; ctx.fillText(v == null ? '偷跑' : v + ' ms', W / (ROUNDS + 1) * (i + 1), H - 40); });
+}
+stage.addEventListener('pointerdown', e => { if (e.target.closest('.overlay')) return; e.preventDefault(); if (state === 'over') { if (performance.now() - overAt > 900) { start(); ov.hidden = true; } return; } tap(); });
+addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat && !(e.target.closest && e.target.closest('button'))) { e.preventDefault(); tap(); } });
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
+  update(dt); ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0); draw(now / 1000); requestAnimationFrame(frame);
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+ovBtn.addEventListener('click', () => { if (state === 'over' && performance.now() - overAt < 600) return; start(); ov.hidden = true; ovBtn.blur(); });
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

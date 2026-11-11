@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>夜市彈珠台</title>
+<style>
+:root{--night:#17121f;--lamp:#ffb648;--lantern:#e23b2e;--kraft:#dcbd8c;--marker:#2b1d14;--text:#fff3e0;--muted:#c4b3c6;
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;color-scheme:dark}
+html{height:100%;box-sizing:border-box;background:var(--night)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 16px 14px;
+  background:radial-gradient(120% 50% at 50% 0%,#3a2232,var(--night) 70%);color:var(--text);font-family:var(--display);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.1rem;letter-spacing:.1em;white-space:nowrap;color:var(--lamp);text-shadow:0 0 12px rgba(255,182,72,.45)}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-weight:700;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid #4a3a52;background:transparent;color:var(--text);cursor:pointer;font-size:.9rem;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:14px;overflow:hidden;touch-action:none;background:#241c2c;box-shadow:0 0 0 1px #3a2c40,0 20px 50px rgba(0,0,0,.5)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%) rotate(-1deg);z-index:5;padding:20px 18px 16px;background:var(--kraft);color:var(--marker);box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-weight:900;font-size:1.55rem;letter-spacing:.08em;color:var(--lantern)}
+.overlay p{margin:0;font-size:.98rem;line-height:1.7}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--lantern);color:#fff;font:900 1rem var(--display);padding:10px 20px;cursor:pointer;letter-spacing:.08em;box-shadow:0 3px 0 #9c2018}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9c2018}
+.keys{font-size:.88rem;color:#6b5236}
+.rec{color:var(--lantern);font-weight:700}
+</style>
+</head>
+<body>
+<header class="hud">
+  <div class="brand">夜市彈珠台</div>
+  <div class="stat"><span>彈珠</span><b id="balls">10</b></div>
+  <div class="stat"><span>分數</span><b id="score">0</b></div>
+  <div class="stat"><span>最高</span><b id="best">0</b></div>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">彈珠台 一局十顆</h1>
+    <p id="ov-text">按住畫面蓄力，力道條會來回跑，放開就把彈珠打出去。力道決定彈珠從哪裡落下，穿過釘子掉進下面的格子，中間 100 分最高。</p>
+    <div class="row"><button class="btn" id="ov-btn">拿彈珠</button><span class="keys" id="ov-keys">電腦按住空白鍵也可以</span></div>
+  </section>
+</main>
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d'), ov = $('overlay'), ovBtn = $('ov-btn');
+
+let actx = null;
+function tone(f1, f2 = f1, dur = .12, type = 'triangle', vol = .06) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+
+/* ---------- 共用：寬 400 的畫布座標、結算與上傳 ---------- */
+const W = 400, GAME = 'pachinko';
+let H = 640, S = 1, DPR = 1, state = 'ready', score = 0, overAt = 0, best = store.get(GAME + '.best', 0);
+$('best').textContent = best;
+function fit() {
+  const r = stage.getBoundingClientRect(); if (!r.width) return;
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S;
+}
+function finish(title, text) {
+  state = 'over'; overAt = performance.now();
+  const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: GAME, score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
+  if (rec) { best = score; store.set(GAME + '.best', best); $('best').textContent = best; }
+  $('ov-title').textContent = title;
+  $('ov-text').innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + text + `最高紀錄 ${best} 分。`;
+  ovBtn.textContent = '再來一局'; $('ov-keys').textContent = ''; ov.hidden = false;
+}
+const pos = e => { const r = stage.getBoundingClientRect(); return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S }; };
+
+/* ---------- 盤面：左邊是釘陣，右邊一條發射軌道，底下七格分數 ---------- */
+const BALLS = 10, LEFT = 14, RIGHT = 352, BR = 7, PR = 5, GRAV = 700;
+const SLOTS = [10, 50, 20, 100, 20, 50, 10], SW = (RIGHT - LEFT) / SLOTS.length;
+let balls = BALLS, phase = 'aim', power = 0, charging = false, ball = null, pegs = [], floor = 560, floats = [], lit = -1, litT = 0;
+
+function layout() {            // 釘子交錯排列，依畫面高度決定排數
+  floor = H - 64; pegs = [];
+  for (let row = 0, y = 130; y < floor - 60; row++, y += 46)
+    for (let x = LEFT + (row % 2 ? 46 : 22); x < RIGHT - 10; x += 48) pegs.push({ x, y });
+}
+function hud() { $('balls').textContent = balls; $('score').textContent = score; }
+function start() { layout(); balls = BALLS; score = 0; phase = 'aim'; ball = null; floats = []; state = 'play'; hud(); }
+
+function press() { if (state === 'play' && phase === 'aim') { charging = true; power = 0; } }
+function release() {
+  if (!charging) return;
+  charging = false; phase = 'fly'; balls--; hud(); tone(300, 900, .2);
+  ball = { x: 376, y: H - 80, vx: 0, vy: -900, lane: true, launch: power };   // 先沿軌道往上衝
+}
+function land() {
+  const i = Math.max(0, Math.min(SLOTS.length - 1, Math.floor((ball.x - LEFT) / SW)));
+  score += SLOTS[i]; lit = i; litT = .8; hud();
+  floats.push({ text: '+' + SLOTS[i], x: LEFT + (i + .5) * SW, y: floor - 20, t: 0 });
+  tone(500 + SLOTS[i] * 6, 900 + SLOTS[i] * 6, .2, 'sine');
+  ball = null;
+  if (balls > 0) phase = 'aim'; else setTimeout(() => finish('彈珠打完了', `這局 ${score} 分，`), 700);
+}
+function step(dt) {
+  const b = ball;
+  if (b.lane) {                // 軌道裡直直往上，到頂後依力道往左飛
+    b.y += b.vy * dt;
+    if (b.y < 70) { b.lane = false; b.y = 70; b.vx = -(70 + b.launch * 400); b.vy = 0; }
+    return;
+  }
+  b.vy += GRAV * dt; b.x += b.vx * dt; b.y += b.vy * dt;
+  if (b.x < LEFT + BR) { b.x = LEFT + BR; b.vx = Math.abs(b.vx) * .6; }
+  if (b.x > RIGHT - BR && b.y > 110) { b.x = RIGHT - BR; b.vx = -Math.abs(b.vx) * .6; }
+  for (const p of pegs) {      // 撞釘子：沿法線反彈，再加一點隨機
+    const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy), min = BR + PR;
+    if (d >= min || d === 0) continue;
+    const nx = dx / d, ny = dy / d, vn = b.vx * nx + b.vy * ny;
+    b.x = p.x + nx * min; b.y = p.y + ny * min;
+    if (vn < 0) { b.vx -= 1.55 * vn * nx; b.vy -= 1.55 * vn * ny; b.vx += (Math.random() - .5) * 40; tone(900, 700, .03, 'square', .02); }
+  }
+  if (b.y > floor - BR) land();
+}
+function update(dt) {
+  for (const f of floats) f.t += dt;
+  floats = floats.filter(f => f.t < 1); litT -= dt;
+  if (state !== 'play') return;
+  if (charging) power = Math.abs(((performance.now() / 700) % 2) - 1);   // 0→1→0 來回
+  if (ball) { step(dt / 2); if (ball) step(dt / 2); }
+}
+function draw() {
+  ctx.fillStyle = '#2a1c33'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#3d2740'; ctx.fillRect(LEFT, 50, RIGHT - LEFT, floor - 50);                        // 盤面
+  ctx.fillStyle = '#1d1424'; ctx.fillRect(RIGHT + 8, 50, 32, H - 100);                                 // 發射軌道
+  SLOTS.forEach((v, i) => {
+    const x = LEFT + i * SW;
+    ctx.fillStyle = i === lit && litT > 0 ? '#ffb648' : v >= 100 ? '#e23b2e' : v >= 50 ? '#b8562c' : '#5b3d27';
+    ctx.fillRect(x + 1, floor, SW - 2, 44);
+    ctx.fillStyle = '#fff3e0'; ctx.font = '900 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(v, x + SW / 2, floor + 22);
+    ctx.fillStyle = '#c9a06a'; ctx.fillRect(x - 1, floor - 26, 2, 26);
+  });
+  ctx.fillStyle = '#ffd98a'; for (const p of pegs) { ctx.beginPath(); ctx.arc(p.x, p.y, PR, 0, 7); ctx.fill(); }
+  if (ball) { ctx.fillStyle = '#eef0f4'; ctx.beginPath(); ctx.arc(ball.x, ball.y, BR, 0, 7); ctx.fill(); }
+  else if (state === 'play' && phase === 'aim') { ctx.fillStyle = '#eef0f4'; ctx.beginPath(); ctx.arc(376, H - 80, BR, 0, 7); ctx.fill(); }
+  const gh = H - 220;                                                                                   // 力道條
+  ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(368, 110, 16, gh);
+  ctx.fillStyle = '#ffb648'; ctx.fillRect(368, 110 + gh * (1 - power), 16, gh * power);
+  ctx.textAlign = 'center'; ctx.font = '900 18px sans-serif';
+  for (const f of floats) { ctx.globalAlpha = 1 - f.t; ctx.fillStyle = '#fff3e0'; ctx.fillText(f.text, f.x, f.y - f.t * 30); }
+  ctx.globalAlpha = 1;
+  if (state === 'play' && phase === 'aim') { ctx.fillStyle = '#fff3e0'; ctx.font = '700 14px sans-serif'; ctx.fillText(charging ? '放開發射' : '按住蓄力', (LEFT + RIGHT) / 2, 80); }
+}
+stage.addEventListener('pointerdown', e => { if (e.target.closest('.overlay')) return; e.preventDefault(); if (state === 'over') { if (performance.now() - overAt > 900) { start(); ov.hidden = true; } return; } press(); });
+addEventListener('pointerup', release); addEventListener('pointercancel', release);
+addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat) { e.preventDefault(); press(); } });
+addEventListener('keyup', e => { if (e.code === 'Space') release(); });
+layout();
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
+  update(dt); ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0); draw(now / 1000); requestAnimationFrame(frame);
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+ovBtn.addEventListener('click', () => { if (state === 'over' && performance.now() - overAt < 600) return; start(); ov.hidden = true; ovBtn.blur(); });
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>粉筆跳格子</title>
+<style>
+:root{--night:#17121f;--lamp:#ffb648;--lantern:#e23b2e;--kraft:#dcbd8c;--marker:#2b1d14;--text:#fff3e0;--muted:#c4b3c6;
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;color-scheme:dark}
+html{height:100%;box-sizing:border-box;background:var(--night)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 16px 14px;
+  background:radial-gradient(120% 50% at 50% 0%,#3a2232,var(--night) 70%);color:var(--text);font-family:var(--display);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.1rem;letter-spacing:.1em;white-space:nowrap;color:var(--lamp);text-shadow:0 0 12px rgba(255,182,72,.45)}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-weight:700;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid #4a3a52;background:transparent;color:var(--text);cursor:pointer;font-size:.9rem;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:14px;overflow:hidden;touch-action:none;background:#241c2c;box-shadow:0 0 0 1px #3a2c40,0 20px 50px rgba(0,0,0,.5)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%) rotate(-1deg);z-index:5;padding:20px 18px 16px;background:var(--kraft);color:var(--marker);box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-weight:900;font-size:1.55rem;letter-spacing:.08em;color:var(--lantern)}
+.overlay p{margin:0;font-size:.98rem;line-height:1.7}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--lantern);color:#fff;font:900 1rem var(--display);padding:10px 20px;cursor:pointer;letter-spacing:.08em;box-shadow:0 3px 0 #9c2018}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9c2018}
+.keys{font-size:.88rem;color:#6b5236}
+.rec{color:var(--lantern);font-weight:700}
+</style>
+</head>
+<body>
+<header class="hud">
+  <div class="brand">粉筆跳格子</div>
+  <div class="stat"><span>格數</span><b id="score">0</b></div>
+  <div class="stat"><span>最高</span><b id="best">0</b></div>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">跳格子 別踩空</h1>
+    <p id="ov-text">下一格在左邊就點畫面左半邊，在右邊就點右半邊。上面的時間條一直在掉，每跳對一格補一點；跳錯邊或時間用完就結束。</p>
+    <div class="row"><button class="btn" id="ov-btn">開始跳</button><span class="keys" id="ov-keys">電腦按 ← →</span></div>
+  </section>
+</main>
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d'), ov = $('overlay'), ovBtn = $('ov-btn');
+
+let actx = null;
+function tone(f1, f2 = f1, dur = .12, type = 'triangle', vol = .06) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+
+/* ---------- 共用：寬 400 的畫布座標、結算與上傳 ---------- */
+const W = 400, GAME = 'hop';
+let H = 640, S = 1, DPR = 1, state = 'ready', score = 0, overAt = 0, best = store.get(GAME + '.best', 0);
+$('best').textContent = best;
+function fit() {
+  const r = stage.getBoundingClientRect(); if (!r.width) return;
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S;
+}
+function finish(title, text) {
+  state = 'over'; overAt = performance.now();
+  const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: GAME, score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
+  if (rec) { best = score; store.set(GAME + '.best', best); $('best').textContent = best; }
+  $('ov-title').textContent = title;
+  $('ov-text').innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + text + `最高紀錄 ${best} 格。`;
+  ovBtn.textContent = '再來一局'; $('ov-keys').textContent = ''; ov.hidden = false;
+}
+const pos = e => { const r = stage.getBoundingClientRect(); return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S }; };
+
+/* ---------- 規則：steps[i] 是第 i 格在左(0)還是右(1)；時間條歸零就結束 ---------- */
+const LX = [130, 270], GAP = 84, SIZE = 70;
+let steps = [0], at = 0, time = 1, cam = 0, hopT = 1, shake = 0;
+const drain = () => .22 + score * .006;                // 每秒掉多少，越跳越快
+function more() { while (steps.length < at + 12) steps.push(Math.random() < .5 ? 0 : 1); }
+function start() { steps = [Math.random() < .5 ? 0 : 1]; at = 0; score = 0; time = 1; cam = 0; state = 'play'; more(); $('score').textContent = 0; }
+function hop(side) {
+  if (state !== 'play') return;
+  if (steps[at + 1] !== side) { shake = .3; tone(200, 80, .3, 'sawtooth'); finish('踩空了', `跳了 ${score} 格，`); return; }
+  at++; score++; time = Math.min(1, time + .13); hopT = 0; more();
+  $('score').textContent = score; tone(400 + (score % 8) * 50, 600 + (score % 8) * 50, .08);
+}
+function update(dt) {
+  cam += (at - cam) * Math.min(1, dt * 12); hopT = Math.min(1, hopT + dt * 6); shake = Math.max(0, shake - dt);
+  if (state !== 'play') return;
+  if (score > 0) time -= drain() * dt;                 // 跳出第一步才開始計時
+  if (time <= 0) { time = 0; finish('時間到', `跳了 ${score} 格，`); }
+}
+function draw() {
+  ctx.fillStyle = '#3b3f48'; ctx.fillRect(0, 0, W, H);                                                 // 柏油路
+  ctx.fillStyle = 'rgba(255,255,255,.04)'; for (let i = 0; i < 60; i++) ctx.fillRect((i * 97) % W, (i * 151) % H, 3, 3);
+  const baseY = H - 150, sx = shake > 0 ? (Math.random() - .5) * 10 : 0;
+  ctx.save(); ctx.translate(sx, 0);
+  for (let i = Math.max(0, at - 2); i < steps.length; i++) {
+    const x = LX[steps[i]], y = baseY - (i - cam) * GAP;
+    if (y < -SIZE) break;
+    ctx.strokeStyle = i === at + 1 ? '#ffd24a' : '#f4f1e8'; ctx.lineWidth = 4; ctx.setLineDash([14, 3]);   // 粉筆線，下一格是黃色
+    ctx.strokeRect(x - SIZE / 2, y - SIZE / 2, SIZE, SIZE); ctx.setLineDash([]);
+    ctx.fillStyle = i <= at ? 'rgba(244,241,232,.25)' : '#f4f1e8'; ctx.font = '900 26px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(i + 1, x, y);
+  }
+  const px = LX[steps[at]], py = baseY - (at - cam) * GAP - Math.sin(hopT * Math.PI) * 26;             // 小朋友：圓頭加身體，跳的時候往上彈
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(px, baseY - (at - cam) * GAP + 26, 18, 6, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e23b2e'; ctx.beginPath(); ctx.roundRect(px - 14, py - 6, 28, 30, 8); ctx.fill();
+  ctx.fillStyle = '#f2c9a0'; ctx.beginPath(); ctx.arc(px, py - 20, 15, 0, 7); ctx.fill();
+  ctx.fillStyle = '#2b1d14'; ctx.beginPath(); ctx.arc(px, py - 26, 15, Math.PI, 0); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(20, 16, W - 40, 12);                           // 時間條
+  ctx.fillStyle = time > .35 ? '#3fb36b' : '#e23b2e'; ctx.fillRect(20, 16, (W - 40) * time, 12);
+  if (state === 'play') { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font = '900 30px sans-serif'; ctx.fillText('←', 40, H - 40); ctx.fillText('→', W - 40, H - 40); }
+}
+stage.addEventListener('pointerdown', e => { if (e.target.closest('.overlay')) return; e.preventDefault(); if (state === 'over') { if (performance.now() - overAt > 900) { start(); ov.hidden = true; } return; } hop(pos(e).x < W / 2 ? 0 : 1); });
+addEventListener('keydown', e => { if (e.code === 'ArrowLeft') hop(0); else if (e.code === 'ArrowRight') hop(1); });
+more();
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
+  update(dt); ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0); draw(now / 1000); requestAnimationFrame(frame);
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+ovBtn.addEventListener('click', () => { if (state === 'over' && performance.now() - overAt < 600) return; start(); ov.hidden = true; ovBtn.blur(); });
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

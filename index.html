@@ -318,8 +318,13 @@ const GAMES = [
   { id: 'boba',        title: '珍珠接接樂', cat: '反應', desc: '拖杯子接珍珠，裝滿一杯換口味，避開辣椒。', best: score('boba.best', '分') },
   { id: 'goldfish',    title: '夜市撈金魚', cat: '反應', desc: '慢慢滑到金魚底下再撈，紙網泡太久會破。', best: score('goldfish.best', '分') },
   { id: 'scratch', new: true,     title: '夜市刮刮樂', cat: '反應', desc: '手指刮開九格，三個數字一樣就中獎，一局五張。', best: score('scratch.best', '分') },
+  { id: 'chicken', new: true,     title: '夜市炸雞排', cat: '反應', desc: '三口油鍋顧到金黃再出餐，客人等太久會走掉。', best: score('chicken.best', '分') },
+  { id: 'hop', new: true,         title: '粉筆跳格子', cat: '反應', desc: '下一格在哪邊就點哪邊，時間條歸零就結束。', best: score('hop.best', '格') },
+  { id: 'reflex', new: true,      title: '紅綠燈反應王', cat: '反應', desc: '一變綠燈馬上點，五回合比反應，偷跑 0 分。', best: score('reflex.best', '分') },
   { id: 'ringtoss',    title: '夜市套圈圈', cat: '動作', desc: '往下拉再放開丟竹圈，整個套住獎品才算。', best: score('ringtoss.best', '分') },
   { id: 'balloon', new: true,     title: '夜市射氣球', cat: '動作', desc: '點氣球開槍，連擊加倍，金氣球加時間，炸彈別碰。', best: score('balloon.best', '分') },
+  { id: 'claw', new: true,        title: '夜市夾娃娃', cat: '動作', desc: '點一下移動、再點一下下爪，對得越準抓得越牢。', best: score('claw.best', '分') },
+  { id: 'pachinko', new: true,    title: '夜市彈珠台', cat: '動作', desc: '按住蓄力放開發射，彈珠穿過釘陣掉進分數格。', best: score('pachinko.best', '分') },
   { id: 'bricks',      title: '套色打磚塊', cat: '動作', desc: '孔版印刷風打磚塊，四種道具輪流掉。', best: score('riso.best', '分') },
   { id: 'stardust',    title: '星塵防線',   cat: '動作', desc: '拖曳移動、自動開火，撐到母艦出現。', best: score('stardust.best', '分') },
   { id: 'plane',       title: '筆記本紙飛機', cat: '動作', desc: '點一下往上飄，從鉛筆之間的縫鑽過去。', best: score('plane.best', '枝') },
@@ -485,7 +490,7 @@ const local = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 };
-const UNIT = { tower: '層', piano: '音', plane: '枝', 'mines-easy': '秒', 'mines-mid': '秒', 'mines-hard': '秒' };
+const UNIT = { hop: '格', tower: '層', piano: '音', plane: '枝', 'mines-easy': '秒', 'mines-mid': '秒', 'mines-hard': '秒' };
 const MINES = [['mines-easy', '初級'], ['mines-mid', '中級'], ['mines-hard', '高級']];
 const isAsc = g => g.startsWith('mines-');
 const better = (g, a, b) => (isAsc(g) ? a < b : a > b);

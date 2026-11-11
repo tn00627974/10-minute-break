@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>夜市夾娃娃</title>
+<style>
+:root{--night:#17121f;--lamp:#ffb648;--lantern:#e23b2e;--kraft:#dcbd8c;--marker:#2b1d14;--text:#fff3e0;--muted:#c4b3c6;
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;color-scheme:dark}
+html{height:100%;box-sizing:border-box;background:var(--night)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 16px 14px;
+  background:radial-gradient(120% 50% at 50% 0%,#3a2232,var(--night) 70%);color:var(--text);font-family:var(--display);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.1rem;letter-spacing:.1em;white-space:nowrap;color:var(--lamp);text-shadow:0 0 12px rgba(255,182,72,.45)}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-weight:700;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid #4a3a52;background:transparent;color:var(--text);cursor:pointer;font-size:.9rem;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:14px;overflow:hidden;touch-action:none;background:#241c2c;box-shadow:0 0 0 1px #3a2c40,0 20px 50px rgba(0,0,0,.5)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%) rotate(-1deg);z-index:5;padding:20px 18px 16px;background:var(--kraft);color:var(--marker);box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-weight:900;font-size:1.55rem;letter-spacing:.08em;color:var(--lantern)}
+.overlay p{margin:0;font-size:.98rem;line-height:1.7}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--lantern);color:#fff;font:900 1rem var(--display);padding:10px 20px;cursor:pointer;letter-spacing:.08em;box-shadow:0 3px 0 #9c2018}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9c2018}
+.keys{font-size:.88rem;color:#6b5236}
+.rec{color:var(--lantern);font-weight:700}
+</style>
+</head>
+<body>
+<header class="hud">
+  <div class="brand">夜市夾娃娃</div>
+  <div class="stat"><span>代幣</span><b id="coins">10</b></div>
+  <div class="stat"><span>分數</span><b id="score">0</b></div>
+  <div class="stat"><span>最高</span><b id="best">0</b></div>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">夾娃娃 一局十枚代幣</h1>
+    <p id="ov-text">點一下，爪子開始左右移動；再點一下，爪子往下抓。對得越準抓得越牢，歪一點可能半路滑掉。越小的娃娃分數越高，金色招財貓 100 分。</p>
+    <div class="row"><button class="btn" id="ov-btn">投幣</button><span class="keys" id="ov-keys">電腦按空白鍵也可以</span></div>
+  </section>
+</main>
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d'), ov = $('overlay'), ovBtn = $('ov-btn');
+
+let actx = null;
+function tone(f1, f2, dur = .12, type = 'triangle', vol = .06) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+
+/* ---------- 娃娃種類：分數、半徑（越小越難夾）、顏色、出現機率 ---------- */
+const KINDS = [
+  { name: '小熊',   pts: 10,  r: 30, c: '#b9793f', ear: 'round', odds: 40 },
+  { name: '兔子',   pts: 20,  r: 25, c: '#f3b6c8', ear: 'long',  odds: 30 },
+  { name: '黑貓',   pts: 30,  r: 21, c: '#3a3542', ear: 'cat',   odds: 22 },
+  { name: '招財貓', pts: 100, r: 17, c: '#f4c22b', ear: 'cat',   odds: 8 }
+];
+const pick = () => { let r = Math.random() * 100; for (const k of KINDS) if ((r -= k.odds) < 0) return k; return KINDS[0]; };
+
+/* ---------- 世界：寬 400 的機台，左邊是出貨口，右邊五格放娃娃 ---------- */
+const W = 400, COINS = 10, HOME = 42, RAIL = 46, SLOTS = [112, 176, 240, 304, 364];
+let H = 640, S = 1, DPR = 1, floor = 520;
+function fit() {
+  const r = stage.getBoundingClientRect(); if (!r.width) return;
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S; floor = H - 100;
+}
+
+/* ---------- 狀態機：idle → move → drop → rise → back → release → idle ---------- */
+let state = 'ready', phase = 'idle', coins = COINS, score = 0, best = store.get('claw.best', 0);
+let claw = { x: HOME, y: RAIL, dir: 1 }, dolls = [], held = null, slipY = 0, falling = [], floats = [], overAt = 0, grip = 0, confetti = [];
+const BACK = [70, 130, 185, 250, 300, 355].map((x, i) => ({ x, k: KINDS[i % 3], tilt: (i % 2 ? 1 : -1) * .15 }));   // 後排裝飾，不能夾
+$('best').textContent = best;
+const newDoll = i => ({ k: pick(), x: SLOTS[i] + (Math.random() - .5) * 14, slot: i });
+const speed = () => 150 + (COINS - coins) * 14;          // 越後面爪子越快
+function hud() { $('coins').textContent = coins; $('score').textContent = score; }
+
+function start() {
+  dolls = SLOTS.map((_, i) => newDoll(i)); coins = COINS; score = 0; held = null; falling = []; floats = [];
+  claw = { x: HOME, y: RAIL, dir: 1 }; phase = 'idle'; state = 'play'; ov.hidden = true; ovBtn.blur(); hud();
+}
+function tap() {
+  if (state !== 'play') return;
+  if (phase === 'idle') { phase = 'move'; tone(300, 500); }
+  else if (phase === 'move') { phase = 'drop'; coins--; hud(); tone(500, 200, .25); }
+}
+function grab() {            // 爪子到底：看離娃娃中心多遠，決定夾牢、半路滑掉或落空
+  const d = dolls.find(o => Math.abs(o.x - claw.x) < o.k.r * .8);
+  if (d) {
+    const q = Math.abs(d.x - claw.x) / d.k.r;            // 0 正中，0.8 邊緣
+    held = d; dolls.splice(dolls.indexOf(d), 1);
+    slipY = q > .35 && Math.random() < (q - .35) / .45 ? RAIL + (floor - RAIL) * (.3 + Math.random() * .5) : 0;
+    tone(400, 700);
+  } else tone(200, 120, .2);
+  phase = 'rise';
+}
+function drop(d, x, y, win) { falling.push({ d, x, y, vy: 0, win }); held = null; }
+function gameOver() {
+  state = 'over'; overAt = performance.now();
+  const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'claw', score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
+  if (rec) { best = score; store.set('claw.best', best); $('best').textContent = best; }
+  $('ov-title').textContent = score ? '代幣用完了' : '一隻都沒夾到';
+  $('ov-text').innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `這局 ${score} 分，最高紀錄 ${best} 分。`;
+  ovBtn.textContent = '再投十枚'; $('ov-keys').textContent = ''; ov.hidden = false;
+}
+
+function update(dt) {
+  for (const f of floats) f.t += dt;
+  floats = floats.filter(f => f.t < 1);
+  for (const c of confetti) { c.t += dt; c.x += c.vx * dt; c.y += c.vy * dt; c.vy += 500 * dt; }
+  confetti = confetti.filter(c => c.t < 1);
+  grip += ((phase === 'rise' || phase === 'back' ? 1 : 0) - grip) * Math.min(1, dt * 12);          // 爪子開合慢慢過渡
+  for (const f of falling) { f.vy += 900 * dt; f.y += f.vy * dt; }
+  for (const f of falling.filter(f => f.y > floor - f.d.k.r)) {
+    if (f.win) { score += f.d.k.pts; hud(); floats.push({ text: '+' + f.d.k.pts, x: HOME + 20, y: floor - 60, t: 0 }); tone(700, 1200, .2, 'sine');
+      for (let i = 0; i < 18; i++) confetti.push({ x: 43, y: floor - 20, vx: (Math.random() - .3) * 260, vy: -200 - Math.random() * 220, t: 0, c: ['#ffd24a', '#fff3e0', '#3fb36b', '#3d8bd9'][i % 4] }); }
+    else { f.d.x = SLOTS[f.d.slot]; dolls.push(f.d); }      // 滑掉的娃娃掉回原位
+  }
+  falling = falling.filter(f => f.y <= floor - f.d.k.r);
+  if (state !== 'play') return;
+  if (phase === 'move') {
+    claw.x += claw.dir * speed() * dt;
+    if (claw.x > W - 24) { claw.x = W - 24; claw.dir = -1; } else if (claw.x < 90) { claw.x = 90; claw.dir = 1; }
+  } else if (phase === 'drop') {
+    claw.y += 320 * dt;
+    if (claw.y >= floor - 96) { claw.y = floor - 96; grab(); }
+  } else if (phase === 'rise') {
+    claw.y -= 240 * dt;
+    if (held && slipY && claw.y < slipY) { drop(held, held.x, claw.y + 50, false); floats.push({ text: '滑掉了', x: claw.x, y: claw.y, t: 0 }); tone(300, 100, .25); }
+    if (claw.y <= RAIL) { claw.y = RAIL; phase = 'back'; }
+  } else if (phase === 'back') {
+    claw.x -= 260 * dt;
+    if (claw.x <= HOME) {
+      claw.x = HOME; claw.dir = 1;
+      if (held) { const d = held; drop(d, HOME, RAIL + 40, true); dolls.push(newDoll(d.slot)); }   // 補一隻新的
+      phase = 'release';
+    }
+  } else if (phase === 'release' && !falling.length) {
+    if (coins <= 0) gameOver(); else phase = 'idle';
+  }
+  if (held) held.x = claw.x;
+}
+
+/* ---------- 畫面 ---------- */
+const E = (x, y, rx, ry, c, rot = 0) => { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, 7); ctx.fill(); };
+// 娃娃：(x, y) 是頭的中心；身體、手腳、耳朵、腮紅都照半徑 r 比例畫
+function drawDoll(k, x, y, tilt = 0) {
+  const r = k.r, dark = k.c === '#3a3542', inner = dark ? '#5a5366' : 'rgba(255,255,255,.45)';
+  ctx.save(); ctx.translate(x, y); ctx.rotate(tilt);
+  E(-r * .45, r * 1.75, r * .3, r * .2, k.c); E(r * .45, r * 1.75, r * .3, r * .2, k.c);                 // 腳
+  E(0, r * 1.15, r * .78, r * .72, k.c); E(0, r * 1.22, r * .45, r * .42, inner);                         // 身體、肚子
+  E(-r * .8, r * .95, r * .22, r * .36, k.c, .5); E(r * .8, k.pts === 100 ? r * .35 : r * .95, r * .22, r * .36, k.c, -.5);   // 手（招財貓舉右手）
+  for (const s of [-1, 1]) {                                                                               // 耳朵
+    if (k.ear === 'round') { E(s * r * .68, -r * .72, r * .32, r * .32, k.c); E(s * r * .68, -r * .72, r * .16, r * .16, inner); }
+    else if (k.ear === 'long') { E(s * r * .38, -r * 1.3, r * .2, r * .6, k.c, s * .12); E(s * r * .38, -r * 1.3, r * .09, r * .42, '#e98aa6', s * .12); }
+    else { ctx.fillStyle = k.c; ctx.beginPath(); ctx.moveTo(s * r * .9, -r * .3); ctx.lineTo(s * r * .72, -r * 1.25); ctx.lineTo(s * r * .15, -r * .82); ctx.fill(); }
+  }
+  E(0, 0, r, r * .95, k.c);                                                                                // 頭
+  E(-r * .3, -r * .4, r * .45, r * .28, 'rgba(255,255,255,.18)', -.5);                                     // 頭頂反光
+  E(0, r * .28, r * .42, r * .3, inner);                                                                   // 口鼻
+  const eye = dark ? '#ffd24a' : '#2b1d14';
+  for (const s of [-1, 1]) { E(s * r * .38, -r * .1, r * .11, r * .14, eye); E(s * r * .35, -r * .15, r * .04, r * .04, '#fff'); E(s * r * .62, r * .22, r * .16, r * .1, 'rgba(240,110,130,.45)'); }
+  E(0, r * .18, r * .09, r * .06, '#2b1d14');
+  if (k.pts === 100) { ctx.fillStyle = '#e23b2e'; ctx.fillRect(-r * .6, r * .62, r * 1.2, r * .16); E(0, r * .82, r * .16, r * .16, '#fff1b8'); }   // 紅項圈與鈴鐺
+  ctx.restore();
+}
+function drawClaw() {
+  const { x, y } = claw, a = .62 - grip * .4;                                                              // 爪子張角：抓住時收攏
+  ctx.strokeStyle = '#6f7684'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, RAIL - 6); ctx.lineTo(x, y - 8); ctx.stroke();
+  ctx.fillStyle = '#4d5361'; ctx.beginPath(); ctx.roundRect(x - 22, RAIL - 22, 44, 18, 5); ctx.fill();    // 軌道上的滑車
+  ctx.fillStyle = '#ffb648'; ctx.fillRect(x - 16, RAIL - 16, 32, 4);
+  ctx.strokeStyle = '#dfe3ea'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const s of [-1, 1]) {
+    const ex = x + s * Math.sin(a) * 34, ey = y + Math.cos(a) * 34;                                        // 上臂
+    ctx.beginPath(); ctx.moveTo(x + s * 7, y + 2); ctx.lineTo(ex, ey); ctx.lineTo(ex - s * 9, ey + 18); ctx.stroke();
+  }
+  ctx.fillStyle = '#aeb5c2'; ctx.beginPath(); ctx.roundRect(x - 13, y - 10, 26, 16, 5); ctx.fill();
+  E(x, y - 2, 4, 4, '#e23b2e');
+}
+function draw(t = 0) {
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0);
+  // 機台內部
+  const bg = ctx.createLinearGradient(0, 0, 0, floor); bg.addColorStop(0, '#31204d'); bg.addColorStop(1, '#7b3f78');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(255,255,255,.07)'; for (let i = 0; i < 40; i++) ctx.fillRect((i * 83) % W, 60 + (i * 131) % (floor - 120), 3, 3);
+  ctx.globalAlpha = .38; BACK.forEach((d, i) => drawDoll(d.k, d.x, floor - 20 - d.k.r * 1.9 + Math.sin(i) * 4, d.tilt)); ctx.globalAlpha = 1;   // 後排裝飾娃娃
+  const bed = ctx.createLinearGradient(0, floor - 26, 0, floor); bed.addColorStop(0, '#f6c9d8'); bed.addColorStop(1, '#d892ad');
+  ctx.fillStyle = bed; ctx.beginPath(); ctx.roundRect(80, floor - 14, W - 80, 20, 8); ctx.fill();          // 軟墊
+  for (const d of dolls) { const y = floor - 12 - d.k.r * 1.9; E(d.x, floor - 8, d.k.r * .9, 5, 'rgba(60,20,60,.25)'); drawDoll(d.k, d.x, y + Math.sin(t * 2 + d.slot) * 1.2); }
+  for (const f of falling) drawDoll(f.d.k, f.x, f.y, Math.sin(f.y / 40) * .3);
+  // 軌道、爪子、被夾住的娃娃（上升時輕輕晃）
+  ctx.fillStyle = '#3a3f4b'; ctx.fillRect(0, RAIL - 16, W, 6);
+  if (held) drawDoll(held.k, claw.x + Math.sin(t * 7) * 2, claw.y + 34 + held.k.r * .5, Math.sin(t * 7) * .1);
+  drawClaw();
+  // 玻璃反光
+  ctx.save(); ctx.globalAlpha = .07; ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.moveTo(60, 30); ctx.lineTo(120, 30); ctx.lineTo(20, floor); ctx.lineTo(8, floor); ctx.lineTo(8, 230); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(150, 30); ctx.lineTo(175, 30); ctx.lineTo(70, floor); ctx.lineTo(45, floor); ctx.fill(); ctx.restore();
+  // 機台外框：頂部跑馬燈、兩側柱、底座
+  ctx.fillStyle = '#b8281c'; ctx.fillRect(0, 0, 8, H); ctx.fillRect(W - 8, 0, 8, H);
+  ctx.fillStyle = '#e23b2e'; ctx.fillRect(0, 0, W, 24);
+  for (let i = 0; i < 13; i++) { const on = (Math.floor(t * 3) + i) % 3 === 0; E(16 + i * 30.6, 12, 5, 5, on ? '#fff1b8' : '#8a1f16'); if (on) E(16 + i * 30.6, 12, 9, 9, 'rgba(255,220,120,.25)'); }
+  const base = ctx.createLinearGradient(0, floor, 0, H); base.addColorStop(0, '#e8432a'); base.addColorStop(1, '#a8231a');
+  ctx.fillStyle = base; ctx.fillRect(0, floor + 4, W, H - floor);
+  ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(0, floor + 4, W, 3);
+  ctx.fillStyle = '#17121f'; ctx.beginPath(); ctx.roundRect(10, floor - 6, 66, H - floor - 4, 6); ctx.fill();   // 出貨口
+  ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(76, floor - 64, 4, 64);                            // 擋板
+  ctx.fillStyle = '#ffb648'; ctx.font = '900 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('出貨口', 43, H - 18);
+  const ready = state === 'play' && (phase === 'idle' || phase === 'move'), bx = W - 46, by = floor + (H - floor) / 2 + 4;
+  E(bx, by + 3, 22, 22, '#6a1610'); E(bx, by, 22, 22, ready ? (Math.sin(t * 6) > 0 ? '#ffd24a' : '#ffb648') : '#b98a3a');   // 大按鈕，可以按的時候會閃
+  E(bx - 6, by - 7, 8, 5, 'rgba(255,255,255,.45)', -.5);
+  E(W - 110, by + 8, 16, 6, '#6a1610'); ctx.strokeStyle = '#2b1d14'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(W - 110, by + 6); ctx.lineTo(W - 110 + claw.dir * (phase === 'move' ? 7 : 0), by - 14); ctx.stroke();
+  E(W - 110 + claw.dir * (phase === 'move' ? 7 : 0), by - 16, 8, 8, '#2b1d14');                            // 搖桿，移動時會倒向同一邊
+  if (ready) { ctx.fillStyle = '#fff3e0'; ctx.font = '700 14px sans-serif'; ctx.fillText(phase === 'idle' ? '點一下：爪子開始移動' : '再點一下：下爪', 190, by); }
+  // 彩帶與加分字
+  for (const c of confetti) { ctx.fillStyle = c.c; ctx.globalAlpha = Math.max(0, 1 - c.t); ctx.fillRect(c.x, c.y, 5, 8); }
+  ctx.font = '900 20px sans-serif';
+  for (const f of floats) { ctx.globalAlpha = 1 - f.t; ctx.fillStyle = '#fff3e0'; ctx.fillText(f.text, f.x, f.y - f.t * 30); }
+  ctx.globalAlpha = 1;
+}
+
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('.overlay')) return;
+  e.preventDefault();
+  if (state === 'over') { if (performance.now() - overAt > 900) start(); return; }
+  tap();
+});
+ovBtn.addEventListener('click', start);
+addEventListener('keydown', e => {
+  if ((e.code === 'Space' || e.code === 'Enter') && !(e.target.closest && e.target.closest('button'))) { e.preventDefault(); state === 'play' ? tap() : start(); }
+});
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
+  update(dt); draw(now / 1000); requestAnimationFrame(frame);
+}
+fit(); dolls = SLOTS.map((_, i) => newDoll(i));
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
