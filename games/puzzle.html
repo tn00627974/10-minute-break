@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>夜市拼拼樂</title>
+<style>
+:root{--night:#17121f;--lamp:#ffb648;--lantern:#e23b2e;--kraft:#dcbd8c;--marker:#2b1d14;--text:#fff3e0;--muted:#c4b3c6;
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;color-scheme:dark}
+html{height:100%;box-sizing:border-box;background:var(--night)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 16px 14px;
+  background:radial-gradient(120% 50% at 50% 0%,#3a2232,var(--night) 70%);color:var(--text);font-family:var(--display);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.1rem;letter-spacing:.1em;white-space:nowrap;color:var(--lamp);text-shadow:0 0 12px rgba(255,182,72,.45)}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-weight:700;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.icon-btn{height:34px;min-width:34px;padding:0 10px;border-radius:8px;border:1px solid #4a3a52;background:transparent;color:var(--text);cursor:pointer;font:700 .85rem var(--display)}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:14px;overflow:hidden;touch-action:none;background:#241c2c;box-shadow:0 0 0 1px #3a2c40,0 20px 50px rgba(0,0,0,.5)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%) rotate(-1deg);z-index:5;padding:20px 18px 16px;background:var(--kraft);color:var(--marker);box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-weight:900;font-size:1.55rem;letter-spacing:.08em;color:var(--lantern)}
+.overlay p{margin:0;font-size:.98rem;line-height:1.7}
+.sizes{display:flex;gap:8px}
+.sizes button{flex:1;padding:8px 0;border:2px solid var(--marker);border-radius:8px;background:transparent;color:var(--marker);font:900 1rem var(--display);cursor:pointer}
+.sizes button.on{background:var(--marker);color:var(--kraft)}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--lantern);color:#fff;font:900 1rem var(--display);padding:10px 20px;cursor:pointer;letter-spacing:.08em;box-shadow:0 3px 0 #9c2018}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9c2018}
+.keys{font-size:.88rem;color:#6b5236}
+.rec{color:var(--lantern);font-weight:700}
+</style>
+</head>
+<body>
+<header class="hud">
+  <div class="brand">夜市拼拼樂</div>
+  <div class="stat"><span>時間</span><b id="time">0</b></div>
+  <div class="stat"><span>步數</span><b id="moves">0</b></div>
+  <div class="stat"><span>最高</span><b id="best">0</b></div>
+  <button class="icon-btn" id="peek">原圖</button>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">拼回夜市的樣子</h1>
+    <p id="ov-text">點一塊再點另一塊，兩塊互換位置。拼得越快、步數越少，分數越高；格子越多，基本分越高。</p>
+    <div class="sizes" id="sizes"></div>
+    <div class="row"><button class="btn" id="ov-btn">開始拼</button><span class="keys" id="ov-keys">按住右上「原圖」可以偷看</span></div>
+  </section>
+</main>
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn'), ovKeys = $('ov-keys');
+
+/* ---------- 一點音效 ---------- */
+let actx = null;
+function tone(f, dur = .1, type = 'sine', vol = .07) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+
+/* ---------- 用程式畫一張夜市插圖（不用外部圖檔），之後切成 n×n 塊 ---------- */
+const ART = 400, art = document.createElement('canvas'); art.width = art.height = ART;
+(function paint() {
+  const a = art.getContext('2d'), E = (x, y, rx, ry, c) => { a.fillStyle = c; a.beginPath(); a.ellipse(x, y, rx, ry, 0, 0, 7); a.fill(); };
+  const sky = a.createLinearGradient(0, 0, 0, ART); sky.addColorStop(0, '#1d1b4a'); sky.addColorStop(.6, '#7a3a78'); sky.addColorStop(1, '#e0618a');
+  a.fillStyle = sky; a.fillRect(0, 0, ART, ART);
+  for (let i = 0; i < 30; i++) E((i * 97) % 400, (i * 53) % 170 + 10, 1.4, 1.4, '#fff3');           // 星星
+  E(310, 70, 28, 28, '#fff1c4'); E(320, 64, 24, 24, '#2a2060');                                      // 彎月
+  a.fillStyle = '#2b1f4a';                                                                            // 遠方大樓
+  [[0, 190, 60], [60, 150, 50], [110, 200, 70], [260, 170, 60], [320, 140, 80]].forEach(([x, y, w]) => a.fillRect(x, y, w, ART - y));
+  a.strokeStyle = '#ffd9a0'; a.lineWidth = 2; a.beginPath(); a.moveTo(0, 30); a.quadraticCurveTo(200, 80, 400, 30); a.stroke();
+  ['#e23b2e', '#ffb648', '#e23b2e', '#ffb648', '#e23b2e', '#ffb648'].forEach((c, i) => { const u = (i + 1) / 7; E(u * 400, 30 + 100 * u * (1 - u) + 10, 11, 14, c); });   // 燈籠
+  a.fillStyle = '#6b3a24'; a.fillRect(0, 300, ART, 100);                                              // 木桌
+  a.fillStyle = '#5a2f1c'; for (let x = 0; x < ART; x += 50) a.fillRect(x, 300, 2, 100);
+  for (let i = 0; i < 8; i++) { a.fillStyle = i % 2 ? '#fff3e0' : '#e23b2e'; a.beginPath(); a.moveTo(40 + i * 40, 215); a.lineTo(80 + i * 40, 215); a.lineTo(85 + i * 40, 250); a.lineTo(35 + i * 40, 250); a.fill(); }   // 紅白遮陽棚
+  [['#3d8bd9', 70], ['#f4c22b', 170], ['#3fb36b', 330]].forEach(([c, x], i) => { a.strokeStyle = '#fff8'; a.beginPath(); a.moveTo(x, 280 - i * 8); a.lineTo(x - 4, 330); a.stroke(); E(x, 270 - i * 8, 20, 24, c); });   // 氣球
+  E(235, 290, 22, 20, '#111'); a.fillStyle = '#111'; [[217, 262], [237, 262]].forEach(([x, y]) => { a.beginPath(); a.moveTo(x, y + 14); a.lineTo(x + 8, y); a.lineTo(x + 14, y + 14); a.fill(); });   // 黑貓
+  E(228, 288, 3, 4, '#ffd24a'); E(242, 288, 3, 4, '#ffd24a');
+})();
+
+/* ---------- 狀態：order[格子] = 放在這格的是第幾塊 ---------- */
+let n = store.get('puzzle.n', 4), order = [], sel = -1, moves = 0, t0 = 0, sec = 0, state = 'ready', peek = false;
+let best = store.get('puzzle.best', 0), size = 300, ox = 0, oy = 0;
+$('best').textContent = best;
+
+function shuffle() {
+  order = [...Array(n * n).keys()];
+  do { for (let i = order.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [order[i], order[j]] = [order[j], order[i]]; } }
+  while (order.every((p, i) => p === i));
+}
+const solved = () => order.every((p, i) => p === i);
+const score = () => Math.max(10, n * n * 100 - sec * 5 - moves * 3);   // 格子越多基本分越高
+function hud() { $('time').textContent = sec; $('moves').textContent = moves; }
+
+function renderSizes() {
+  $('sizes').innerHTML = [3, 4, 5].map(k => `<button data-n="${k}" class="${k === n ? 'on' : ''}">${k}×${k}</button>`).join('');
+}
+$('sizes').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  n = +b.dataset.n; store.set('puzzle.n', n); renderSizes(); shuffle();
+});
+
+function start() {
+  if (state === 'play') return;
+  if (state !== 'paused') { shuffle(); moves = 0; sec = 0; sel = -1; t0 = performance.now(); }
+  else t0 = performance.now() - sec * 1000;
+  state = 'play'; ov.hidden = true; ovBtn.blur(); hud();
+}
+function pause() {
+  if (state !== 'play') return;
+  state = 'paused'; ovTitle.textContent = '休息一下'; ovText.textContent = '拼圖先蓋起來，時間也停了。';
+  ovBtn.textContent = '繼續拼'; ovKeys.textContent = '';
+  $('sizes').hidden = true; ov.hidden = false;
+}
+function win() {
+  state = 'over'; const s = score(), rec = s > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'puzzle', score: s }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
+  if (rec) { best = s; store.set('puzzle.best', best); $('best').textContent = best; }
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, .15), i * 110));
+  ovTitle.textContent = '拼好了！';
+  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `${n}×${n} 用了 ${sec} 秒、${moves} 步，得 ${s} 分（最高 ${best}）。`;
+  ovBtn.textContent = '再拼一次'; ovKeys.textContent = '';
+  $('sizes').hidden = false; setTimeout(() => { ov.hidden = false; }, 700);
+}
+
+/* ---------- 輸入：點兩塊互換 ---------- */
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('.overlay') || state !== 'play') return;
+  const r = stage.getBoundingClientRect(), s = size / n;
+  const c = Math.floor((e.clientX - r.left - ox) / s), d = Math.floor((e.clientY - r.top - oy) / s);
+  if (c < 0 || d < 0 || c >= n || d >= n) return;
+  const i = d * n + c;
+  if (sel < 0) { sel = i; tone(440, .06); return; }
+  if (sel !== i) {
+    [order[sel], order[i]] = [order[i], order[sel]]; moves++; tone(620, .08); hud();
+    if (solved()) { sel = -1; win(); return; }
+  }
+  sel = -1;
+});
+ovBtn.addEventListener('click', start);
+const peekOn = v => { peek = v && state === 'play'; };
+$('peek').addEventListener('pointerdown', () => peekOn(true));
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => $('peek').addEventListener(ev, () => peekOn(false)));
+addEventListener('keydown', e => {
+  if (e.code === 'KeyP' || e.code === 'Escape') { state === 'paused' ? start() : pause(); return; }
+  if ((e.code === 'Space' || e.code === 'Enter') && !(e.target.closest && e.target.closest('button'))) { e.preventDefault(); if (state !== 'play') start(); }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+addEventListener('blur', pause);
+
+/* ---------- 畫面 ---------- */
+let DPR = 1;
+function fit() {
+  const r = stage.getBoundingClientRect(); if (!r.width) return;
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  size = Math.min(r.width, r.height) - 24; ox = (r.width - size) / 2; oy = (r.height - size) / 2;
+}
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#241c2c'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const s = size / n, g = 2, p = ART / n;
+  for (let i = 0; i < n * n; i++) {
+    const x = ox + (i % n) * s, y = oy + (i / n | 0) * s, pc = order[i];
+    if (state === 'paused') { ctx.fillStyle = i % 2 ? '#3a2c40' : '#2f2436'; ctx.fillRect(x + g, y + g, s - 2 * g, s - 2 * g); continue; }
+    ctx.drawImage(art, (pc % n) * p, (pc / n | 0) * p, p, p, x + g, y + g, s - 2 * g, s - 2 * g);
+    if (pc === i && state === 'play') { ctx.fillStyle = 'rgba(80,220,120,.18)'; ctx.fillRect(x + g, y + g, s - 2 * g, s - 2 * g); }   // 放對位置的塊會泛綠
+    if (i === sel) { ctx.strokeStyle = '#ffb648'; ctx.lineWidth = 4; ctx.strokeRect(x + g + 2, y + g + 2, s - 2 * g - 4, s - 2 * g - 4); }
+  }
+  if (peek) ctx.drawImage(art, ox, oy, size, size);
+}
+function frame(now) {
+  if (state === 'play') { const v = Math.floor((now - t0) / 1000); if (v !== sec) { sec = v; hud(); } }
+  draw(); requestAnimationFrame(frame);
+}
+fit(); renderSizes(); shuffle();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>夜市射氣球</title>
+<style>
+:root{--night:#17121f;--lamp:#ffb648;--lantern:#e23b2e;--kraft:#dcbd8c;--marker:#2b1d14;--text:#fff3e0;--muted:#c4b3c6;
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;color-scheme:dark}
+html{height:100%;box-sizing:border-box;background:var(--night)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 16px 14px;
+  background:radial-gradient(120% 50% at 50% 0%,#3a2232,var(--night) 70%);color:var(--text);font-family:var(--display);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.1rem;letter-spacing:.1em;white-space:nowrap;color:var(--lamp);text-shadow:0 0 12px rgba(255,182,72,.45)}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-weight:700;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid #4a3a52;background:transparent;color:var(--text);cursor:pointer;font-size:.9rem;padding:0}
+.icon-btn.off{color:var(--muted);text-decoration:line-through}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:14px;overflow:hidden;touch-action:none;background:#241c2c;box-shadow:0 0 0 1px #3a2c40,0 20px 50px rgba(0,0,0,.5)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%) rotate(-1deg);z-index:5;padding:20px 18px 16px;background:var(--kraft);color:var(--marker);box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-weight:900;font-size:1.55rem;letter-spacing:.08em;color:var(--lantern)}
+.overlay p{margin:0;font-size:.98rem;line-height:1.7}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--lantern);color:#fff;font:900 1rem var(--display);padding:10px 20px;cursor:pointer;letter-spacing:.08em;box-shadow:0 3px 0 #9c2018}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9c2018}
+.keys{font-size:.88rem;color:#6b5236}
+.rec{color:var(--lantern);font-weight:700}
+</style>
+</head>
+<body>
+<header class="hud">
+  <div class="brand">夜市射氣球</div>
+  <div class="stat"><span>時間</span><b id="time">60</b></div>
+  <div class="stat"><span>分數</span><b id="score">0</b></div>
+  <div class="stat"><span>最高</span><b id="best">0</b></div>
+  <button class="icon-btn" id="mute" aria-label="音效">♪</button>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">射氣球 一局六十秒</h1>
+    <p id="ov-text">點氣球就是開槍，一次六顆軟木塞，打空會重新裝填。連續命中分數加倍；金氣球加時間，黑色炸彈氣球別碰，會扣五秒。</p>
+    <div class="row"><button class="btn" id="ov-btn">拿槍</button><span class="keys" id="ov-keys">電腦用滑鼠點擊</span></div>
+  </section>
+</main>
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const timeEl = $('time'), scoreEl = $('score'), bestEl = $('best'), muteBtn = $('mute');
+const ov = $('overlay'), ovTitle = $('ov-title'), ovText = $('ov-text'), ovBtn = $('ov-btn'), ovKeys = $('ov-keys');
+
+/* ---------- sound ---------- */
+let actx = null, muted = !!store.get('balloon.muted', false);
+function tone(f1, f2, dur, type = 'sine', vol = .08) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+const sfx = {
+  pop: c => tone(500 + c * 60, 120, .12, 'square', .07),
+  miss: () => tone(160, 90, .08, 'triangle', .05),
+  gold: () => { tone(700, 1400, .2, 'sine', .08); setTimeout(() => tone(1000, 1800, .2, 'sine', .07), 90); },
+  bomb: () => tone(120, 35, .4, 'sawtooth', .12),
+  reload: () => tone(300, 600, .15, 'triangle', .06),
+  end: () => tone(440, 220, .5, 'triangle', .08)
+};
+function setMute(m) { muted = m; muteBtn.classList.toggle('off', m); store.set('balloon.muted', m); }
+setMute(muted);
+muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); sfx.reload(); });
+
+/* ---------- balloon kinds: points, radius, speed, spawn odds ---------- */
+const KINDS = {
+  red:   { pts: 10, r: 27, sp: 1,   c: '#e8432a', odds: 34 },
+  blue:  { pts: 10, r: 27, sp: 1,   c: '#3d8bd9', odds: 30 },
+  green: { pts: 20, r: 20, sp: 1.45, c: '#3fb36b', odds: 18 },
+  gold:  { pts: 50, r: 18, sp: 1.9, c: '#f4c22b', odds: 6 },
+  bomb:  { pts: 0,  r: 25, sp: 1,   c: '#2a2630', odds: 12 }
+};
+const KEYS = Object.keys(KINDS);
+const pick = () => { let r = Math.random() * 100; for (const k of KEYS) if ((r -= KINDS[k].odds) < 0) return k; return 'red'; };
+
+/* ---------- world: 400-unit-wide stage, counter along the bottom ---------- */
+const W = 400, TIME = 60, MAG = 6, RELOAD = 1;
+let H = 640, S = 1, DPR = 1, counterY = 540;
+function fit() {
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
+  S = r.width / W; H = r.height / S; counterY = H - Math.max(70, H * .13);
+}
+
+let state = 'ready', left = TIME, score = 0, combo = 0, ammo = MAG, reloadT = 0, spawnT = 0, elapsed = 0, overAt = 0, shake = 0, aim = 0;
+let balloons = [], parts = [], floats = [], tracers = [];
+let best = store.get('balloon.best', 0);
+bestEl.textContent = best;
+
+function spawn() {
+  const k = pick(), K = KINDS[k], r = K.r;
+  balloons.push({ k, r, x: r + 10 + Math.random() * (W - 2 * r - 20), y: counterY + r, v: (52 + Math.random() * 28 + elapsed * .4) * K.sp, ph: Math.random() * 6, amp: 10 + Math.random() * 16 });
+}
+const mult = () => combo >= 6 ? 3 : combo >= 3 ? 2 : 1;
+function hud() { timeEl.textContent = Math.max(0, Math.ceil(left)); scoreEl.textContent = score; }
+function add(text, x, y, color) { floats.push({ text, x, y, color, t: 0 }); }
+function burst(x, y, c, n) {
+  for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, s = 60 + Math.random() * 140; parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 40, c, t: 0 }); }
+}
+
+function start() {
+  if (state === 'play') return;
+  if (state === 'paused') { state = 'play'; ov.hidden = true; return; }
+  balloons = []; parts = []; floats = []; tracers = [];
+  left = TIME; score = 0; combo = 0; ammo = MAG; reloadT = 0; spawnT = 0; elapsed = 0;
+  state = 'play'; ov.hidden = true; ovBtn.blur(); hud();
+}
+function pause() {
+  if (state !== 'play') return;
+  state = 'paused'; ovTitle.textContent = '休息一下'; ovText.textContent = '氣球停在半空，時間也停了。';
+  ovBtn.textContent = '繼續射'; ovKeys.textContent = 'P 或空白鍵也能繼續'; ov.hidden = false;
+}
+function gameOver() {
+  state = 'over'; overAt = performance.now(); sfx.end();
+  const rec = score > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'balloon', score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
+  if (rec) { best = score; store.set('balloon.best', best); bestEl.textContent = best; }
+  ovTitle.textContent = '收攤囉';
+  ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `這局 ${score} 分，最高紀錄 ${best} 分。`;
+  ovBtn.textContent = '再來一局'; ovKeys.textContent = '點畫面也能重來'; ov.hidden = false;
+}
+
+/* ---------- shooting: a tap is a hitscan cork ---------- */
+function shoot(x, y) {
+  if (ammo <= 0) return;
+  ammo--; if (!ammo) reloadT = RELOAD;
+  aim = Math.atan2(y - (H - 30), x - W / 2);
+  tracers.push({ x, y, t: 0 });
+  let hit = null;
+  for (let i = balloons.length - 1; i >= 0; i--) { const b = balloons[i]; if (Math.hypot(b.x - x, b.y - y) < b.r + 6) { hit = b; break; } }
+  if (!hit) { combo = 0; sfx.miss(); add('打空', x, y - 10, '#c4b3c6'); return; }
+  balloons.splice(balloons.indexOf(hit), 1);
+  const K = KINDS[hit.k];
+  burst(hit.x, hit.y, K.c, 14);
+  if (hit.k === 'bomb') { left -= 5; combo = 0; shake = .35; sfx.bomb(); add('炸彈 -5 秒', hit.x, hit.y, '#ff6a5a'); return; }
+  combo++;
+  const gain = K.pts * mult();
+  score += gain; sfx.pop(Math.min(combo, 8));
+  add('+' + gain, hit.x, hit.y, '#fff3e0');
+  if (hit.k === 'gold') { left = Math.min(left + 2, TIME + 10); sfx.gold(); add('+2 秒', hit.x, hit.y - 22, '#ffd66a'); }
+  hud();
+}
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('.overlay')) return;
+  e.preventDefault();
+  if (state === 'over') { if (performance.now() - overAt > 900) start(); return; }
+  if (state !== 'play') return;
+  const r = stage.getBoundingClientRect();
+  shoot((e.clientX - r.left) / S, (e.clientY - r.top) / S);
+});
+ovBtn.addEventListener('click', () => { if (state === 'over' && performance.now() - overAt < 600) return; start(); });
+addEventListener('keydown', e => {
+  if (e.code === 'KeyP' || e.code === 'Escape') { state === 'paused' ? start() : pause(); return; }
+  if ((e.code === 'Space' || e.code === 'Enter') && !(e.target.closest && e.target.closest('button'))) {
+    e.preventDefault();
+    if (state === 'paused' || state === 'ready' || (state === 'over' && performance.now() - overAt > 600)) start();
+  }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+addEventListener('blur', pause);
+
+/* ---------- update ---------- */
+function update(dt) {
+  for (const p of parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 420 * dt; }
+  parts = parts.filter(p => p.t < .7);
+  for (const f of floats) f.t += dt;
+  floats = floats.filter(f => f.t < .9);
+  for (const t of tracers) t.t += dt;
+  tracers = tracers.filter(t => t.t < .12);
+  shake = Math.max(0, shake - dt);
+  if (state !== 'play') return;
+  elapsed += dt; left -= dt; timeEl.textContent = Math.max(0, Math.ceil(left));
+  if (left <= 0) { left = 0; hud(); gameOver(); return; }
+  if (ammo <= 0) { reloadT -= dt; if (reloadT <= 0) { ammo = MAG; sfx.reload(); } }
+  spawnT -= dt;
+  if (spawnT <= 0) { spawn(); spawnT = Math.max(.4, .95 - elapsed * .009) * (.8 + Math.random() * .4); }
+  for (const b of balloons) { b.y -= b.v * dt; b.ph += dt * 2; b.sx = Math.sin(b.ph) * b.amp; }
+  balloons = balloons.filter(b => b.y > -b.r * 2);
+}
+
+/* ---------- draw ---------- */
+function drawBalloon(b) {
+  const K = KINDS[b.k], x = b.x + (b.sx || 0), y = b.y, r = b.r;
+  ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, y + r * 1.15); ctx.quadraticCurveTo(x + 5, y + r * 1.7, x - 3, y + r * 2.3); ctx.stroke();
+  ctx.fillStyle = K.c;
+  ctx.beginPath(); ctx.ellipse(x, y, r * .88, r, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x, y + r); ctx.lineTo(x - 4, y + r + 6); ctx.lineTo(x + 4, y + r + 6); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(x - r * .35, y - r * .4, r * .18, r * .3, .5, 0, Math.PI * 2); ctx.fill();
+  if (b.k === 'bomb') {
+    ctx.strokeStyle = '#ffb648'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - r); ctx.quadraticCurveTo(x + 6, y - r - 8, x + 2, y - r - 14); ctx.stroke();
+    ctx.fillStyle = '#ff6a5a'; ctx.font = '900 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('✕', x, y + 2);
+  }
+  if (b.k === 'gold') { ctx.fillStyle = '#fff'; ctx.font = '900 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('★', x, y + 1); }
+}
+function draw(t) {
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0);
+  const sh = shake > 0 ? (Math.random() - .5) * 8 * shake : 0;
+  ctx.translate(sh, sh);
+  const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#2b1f3a'); bg.addColorStop(1, '#4a2c3e');
+  ctx.fillStyle = bg; ctx.fillRect(-10, -10, W + 20, H + 20);
+  // lantern string
+  ctx.strokeStyle = '#6a5470'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, 14); ctx.quadraticCurveTo(W / 2, 40, W, 14); ctx.stroke();
+  for (let i = 0; i < 7; i++) {
+    const u = (i + .5) / 7, x = u * W, y = 14 + 26 * 4 * u * (1 - u) * .5 + 4;
+    const g = ctx.createRadialGradient(x, y + 8, 2, x, y + 8, 30); g.addColorStop(0, 'rgba(255,190,90,.55)'); g.addColorStop(1, 'rgba(255,190,90,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - 30, y - 22, 60, 60);
+    ctx.fillStyle = i % 2 ? '#ffb648' : '#e23b2e'; ctx.beginPath(); ctx.ellipse(x, y + 8, 7, 9, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // back board with target stripes
+  ctx.fillStyle = 'rgba(255,255,255,.04)';
+  for (let i = 0; i < 8; i++) if (i % 2) ctx.fillRect(i * W / 8, 50, W / 8, counterY - 50);
+  for (const b of balloons) drawBalloon(b);
+  for (const p of parts) { ctx.fillStyle = p.c; ctx.globalAlpha = 1 - p.t / .7; ctx.fillRect(p.x - 2, p.y - 2, 4, 4); }
+  ctx.globalAlpha = 1;
+  for (const tr of tracers) {
+    ctx.strokeStyle = `rgba(255,230,160,${1 - tr.t / .12})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(W / 2, H - 30); ctx.lineTo(tr.x, tr.y); ctx.stroke();
+  }
+  // counter + cork gun
+  ctx.fillStyle = '#5b3d27'; ctx.fillRect(-10, counterY, W + 20, H - counterY + 10);
+  ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(-10, counterY, W + 20, 3);
+  ctx.fillStyle = 'rgba(0,0,0,.14)'; for (let x = 0; x < W; x += 50) ctx.fillRect(x, counterY, 2, H - counterY);
+  ctx.save(); ctx.translate(W / 2, H - 22); ctx.rotate(Math.max(-1.2, Math.min(1.2, aim + Math.PI / 2)) );
+  ctx.fillStyle = '#8a5a34'; ctx.fillRect(-5, -44, 10, 44); ctx.fillStyle = '#c9a06a'; ctx.fillRect(-7, -50, 14, 10);
+  ctx.fillStyle = '#6b4526'; ctx.fillRect(-9, -4, 18, 22);
+  ctx.restore();
+  // ammo corks + combo
+  for (let i = 0; i < MAG; i++) {
+    ctx.fillStyle = i < ammo ? '#e6c58f' : 'rgba(255,255,255,.15)';
+    ctx.beginPath(); ctx.arc(16 + i * 18, H - 16, 6, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.textBaseline = 'middle';
+  if (ammo <= 0) { ctx.fillStyle = '#ffb648'; ctx.font = '900 13px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('裝填中…', 16 + MAG * 18 + 4, H - 16); }
+  if (combo >= 3 && state === 'play') {
+    ctx.textAlign = 'right'; ctx.fillStyle = '#ffb648'; ctx.font = '900 18px sans-serif'; ctx.fillText(`${combo} 連擊 ×${mult()}`, W - 14, H - 16);
+  }
+  ctx.textAlign = 'center'; ctx.font = '900 18px sans-serif';
+  for (const f of floats) { ctx.globalAlpha = 1 - f.t / .9; ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y - f.t * 36); }
+  ctx.globalAlpha = 1;
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
+  update(dt); draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+for (let i = 0; i < 7; i++) { spawn(); balloons[i].y = 80 + Math.random() * (counterY - 130); }   // 開始畫面先放幾顆氣球
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

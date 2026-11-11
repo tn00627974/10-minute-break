@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>夜市刮刮樂</title>
+<style>
+:root{--night:#17121f;--lamp:#ffb648;--lantern:#e23b2e;--kraft:#dcbd8c;--marker:#2b1d14;--text:#fff3e0;--muted:#c4b3c6;
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;color-scheme:dark}
+html{height:100%;box-sizing:border-box;background:var(--night)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 16px 14px;
+  background:radial-gradient(120% 50% at 50% 0%,#3a2232,var(--night) 70%);color:var(--text);font-family:var(--display);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+.hud{width:100%;max-width:520px;display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0;font-weight:900;font-size:1.1rem;letter-spacing:.1em;white-space:nowrap;color:var(--lamp);text-shadow:0 0 12px rgba(255,182,72,.45)}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.stat span{font-size:.64rem;color:var(--muted);letter-spacing:.12em}
+.stat b{font-weight:700;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.stage{position:relative;flex:1;min-height:0;width:100%;max-width:520px;border-radius:14px;overflow:hidden;touch-action:none;background:#241c2c;box-shadow:0 0 0 1px #3a2c40,0 20px 50px rgba(0,0,0,.5)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%) rotate(-1deg);z-index:5;padding:20px 18px 16px;background:var(--kraft);color:var(--marker);box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px}
+.overlay h1{margin:0;font-weight:900;font-size:1.55rem;letter-spacing:.08em;color:var(--lantern)}
+.overlay p{margin:0;font-size:.98rem;line-height:1.7}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--lantern);color:#fff;font:900 1rem var(--display);padding:10px 20px;cursor:pointer;letter-spacing:.08em;box-shadow:0 3px 0 #9c2018}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9c2018}
+#next{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:4}
+.keys{font-size:.88rem;color:#6b5236}
+.rec{color:var(--lantern);font-weight:700}
+</style>
+</head>
+<body>
+<header class="hud">
+  <div class="brand">夜市刮刮樂</div>
+  <div class="stat"><span>張數</span><b id="no">1/5</b></div>
+  <div class="stat"><span>獎金</span><b id="score">0</b></div>
+  <div class="stat"><span>最高</span><b id="best">0</b></div>
+</header>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <button class="btn" id="next" hidden>下一張</button>
+  <section class="overlay" id="overlay">
+    <h1 id="ov-title">刮刮樂 一局五張</h1>
+    <p id="ov-text">用手指刮開九格，有三格數字一樣就中獎，獎金就是那個數字。五張刮完，累計獎金就是你的分數。</p>
+    <div class="row"><button class="btn" id="ov-btn">買五張</button><span class="keys">電腦用滑鼠按住刮</span></div>
+  </section>
+</main>
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d');
+const ov = $('overlay'), ovBtn = $('ov-btn'), nextBtn = $('next');
+
+let actx = null;
+function tone(f, dur = .08, type = 'triangle', vol = .05) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) {}
+}
+
+/* ---------- 獎項與出牌：三成機率中獎，沒中獎時每個數字最多出現兩次 ---------- */
+const PRIZES = [[10, 50], [20, 28], [50, 14], [100, 7], [500, 1]];    // [獎金, 權重]
+const CARDS = 5, WIN_RATE = .3, GOLD = '#ffb648';
+const rnd = n => Math.random() * n | 0;
+function pickPrize() { let r = rnd(100); for (const [v, w] of PRIZES) if ((r -= w) < 0) return v; return 10; }
+function makeCard() {
+  const win = Math.random() < WIN_RATE, cells = [], count = {};
+  const put = v => { cells.push(v); count[v] = (count[v] || 0) + 1; };
+  if (win) { const p = pickPrize(); for (let i = 0; i < 3; i++) put(p); }
+  while (cells.length < 9) { const v = PRIZES[rnd(PRIZES.length)][0]; if ((count[v] || 0) < 2) put(v); }
+  for (let i = 8; i > 0; i--) { const j = rnd(i + 1); [cells[i], cells[j]] = [cells[j], cells[i]]; }
+  return cells;
+}
+const prizeOf = cells => { const c = {}; for (const v of cells) c[v] = (c[v] || 0) + 1; return +Object.keys(c).find(v => c[v] >= 3) || 0; };
+
+/* ---------- 狀態 ---------- */
+let state = 'ready', no = 1, total = 0, cells = makeCard(), open = Array(9).fill(false), won = 0, best = store.get('scratch.best', 0);
+$('best').textContent = best;
+
+/* ---------- 版面：卡片置中，九格排成 3×3 ---------- */
+let DPR = 1, card = {}, rects = [];
+const foil = document.createElement('canvas'), fx = foil.getContext('2d');
+function fit() {
+  const r = stage.getBoundingClientRect(); if (!r.width) return;
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  cv.width = foil.width = Math.round(r.width * DPR); cv.height = foil.height = Math.round(r.height * DPR);
+  const cs = Math.min((r.width - 24 - 56) / 3, 104, (r.height - 90 - 120) / 3), w = 3 * cs + 56, h = 84 + 3 * cs + 36;
+  card = { x: (r.width - w) / 2, y: Math.max(14, (r.height - h - 60) / 2), w, h };
+  rects = Array.from({ length: 9 }, (_, i) => ({ x: card.x + 20 + (i % 3) * (cs + 8), y: card.y + 84 + (i / 3 | 0) * (cs + 8), s: cs }));
+  newFoil();
+}
+function newFoil() {   // 重鋪銀色塗層，已刮開的格子維持透明
+  fx.setTransform(DPR, 0, 0, DPR, 0, 0); fx.globalCompositeOperation = 'source-over';
+  fx.clearRect(0, 0, cv.width, cv.height);
+  rects.forEach((q, i) => {
+    if (open[i]) return;
+    const g = fx.createLinearGradient(q.x, q.y, q.x + q.s, q.y + q.s); g.addColorStop(0, '#d9dde3'); g.addColorStop(.5, '#a9afb9'); g.addColorStop(1, '#cfd3da');
+    fx.fillStyle = g; fx.beginPath(); fx.roundRect(q.x, q.y, q.s, q.s, 8); fx.fill();
+    fx.fillStyle = 'rgba(60,64,72,.55)'; fx.font = '900 22px sans-serif'; fx.textAlign = 'center'; fx.textBaseline = 'middle'; fx.fillText('刮', q.x + q.s / 2, q.y + q.s / 2);
+  });
+}
+
+/* ---------- 刮：用 destination-out 在塗層上擦出一條線，格子刮到一半以上就整格打開 ---------- */
+let last = null;
+function scratch(x, y) {
+  fx.globalCompositeOperation = 'destination-out'; fx.strokeStyle = '#000'; fx.lineWidth = 26; fx.lineCap = 'round';
+  fx.beginPath(); fx.moveTo(last ? last.x : x, last ? last.y : y); fx.lineTo(x + .01, y); fx.stroke();
+  last = { x, y };
+}
+function cleared(q) {
+  const d = fx.getImageData(q.x * DPR | 0, q.y * DPR | 0, q.s * DPR | 0, q.s * DPR | 0).data;
+  let hit = 0, all = 0;
+  for (let i = 3; i < d.length; i += 40) { all++; if (d[i] < 128) hit++; }
+  return hit / all > .5;
+}
+function check() {
+  rects.forEach((q, i) => { if (!open[i] && cleared(q)) { open[i] = true; fx.clearRect(q.x - 2, q.y - 2, q.s + 4, q.s + 4); tone(500 + i * 40); } });
+  if (state === 'play' && open.every(Boolean)) finishCard();
+}
+function pos(e) { const r = stage.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+stage.addEventListener('pointerdown', e => {
+  if (state !== 'play' || e.target.closest('.overlay,#next')) return;
+  e.preventDefault(); stage.setPointerCapture(e.pointerId); last = null; const p = pos(e); scratch(p.x, p.y);
+});
+stage.addEventListener('pointermove', e => { if (last) { const p = pos(e); scratch(p.x, p.y); } });
+['pointerup', 'pointercancel'].forEach(ev => stage.addEventListener(ev, () => { if (last) { last = null; check(); } }));
+
+/* ---------- 流程 ---------- */
+function hud() { $('no').textContent = no + '/' + CARDS; $('score').textContent = total; }
+function newCard() { cells = makeCard(); open = Array(9).fill(false); won = 0; nextBtn.hidden = true; newFoil(); hud(); }
+function start() { no = 1; total = 0; state = 'play'; ov.hidden = true; ovBtn.blur(); newCard(); }
+function finishCard() {
+  state = 'result'; won = prizeOf(cells); total += won; hud();
+  (won ? [523, 659, 784, 1047] : [220]).forEach((f, i) => setTimeout(() => tone(f, .14, 'sine', .07), i * 110));
+  if (no < CARDS) { nextBtn.textContent = '下一張'; nextBtn.hidden = false; return; }
+  nextBtn.textContent = '結算'; nextBtn.hidden = false;
+}
+nextBtn.addEventListener('click', () => {
+  if (state !== 'result') return;
+  if (no < CARDS) { no++; state = 'play'; newCard(); return; }
+  state = 'over'; nextBtn.hidden = true;
+  const rec = total > best;
+  try { parent.postMessage({ type: 'arcade:score', game: 'scratch', score: total }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
+  if (rec) { best = total; store.set('scratch.best', best); $('best').textContent = best; }
+  $('ov-title').textContent = total ? `五張共 ${total} 分` : '五張都槓龜';
+  $('ov-text').innerHTML = (rec && total ? '<span class="rec">新紀錄！</span>' : '') + `最高紀錄 ${best} 分。`;
+  ovBtn.textContent = '再買五張'; ov.hidden = false;
+});
+ovBtn.addEventListener('click', start);
+addEventListener('keydown', e => { if ((e.code === 'Space' || e.code === 'Enter') && !(e.target.closest && e.target.closest('button')) && state !== 'play') { e.preventDefault(); state === 'result' ? nextBtn.click() : start(); } });
+
+/* ---------- 畫面 ---------- */
+function drawCard() {
+  const { x, y, w, h } = card;
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.roundRect(x + 4, y + 8, w, h, 16); ctx.fill();
+  const g = ctx.createLinearGradient(x, y, x + w, y + h); g.addColorStop(0, '#e8432a'); g.addColorStop(1, '#b8281c');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(x, y, w, h, 16); ctx.fill();
+  ctx.strokeStyle = GOLD; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(x + 7, y + 7, w - 14, h - 14, 11); ctx.stroke();
+  ctx.fillStyle = '#fff3e0'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '900 30px "Chiron GoRound TC",sans-serif'; ctx.fillText('夜市大發財', x + w / 2, y + 38);
+  ctx.fillStyle = GOLD; ctx.font = '700 13px sans-serif'; ctx.fillText('三個一樣 ・ 拿那個獎金', x + w / 2, y + 66);
+}
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#241c2c'; ctx.fillRect(0, 0, cv.width, cv.height);
+  drawCard();
+  rects.forEach((q, i) => {
+    const hit = state === 'result' && won && cells[i] === won;
+    ctx.fillStyle = hit ? '#fff1b8' : '#fff3e0'; ctx.beginPath(); ctx.roundRect(q.x, q.y, q.s, q.s, 8); ctx.fill();
+    if (hit) { ctx.strokeStyle = GOLD; ctx.lineWidth = 4; ctx.stroke(); }
+    ctx.fillStyle = cells[i] >= 100 ? '#e23b2e' : '#2b1d14'; ctx.font = `900 ${q.s * .4}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(cells[i], q.x + q.s / 2, q.y + q.s / 2);
+  });
+  ctx.drawImage(foil, 0, 0, cv.width / DPR, cv.height / DPR);
+  if (state === 'result') {
+    ctx.font = '900 24px "Chiron GoRound TC",sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = won ? GOLD : '#c4b3c6'; ctx.fillText(won ? `中了 ${won} 分！` : '沒中，下一張', card.x + card.w / 2, card.y + card.h + 26);
+  }
+}
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
+(function frame() { draw(); requestAnimationFrame(frame); })();
+})();
+</script>
+</body>
+</html>
