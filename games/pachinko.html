@@ -30,21 +30,31 @@ body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;ali
 .btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9c2018}
 .keys{font-size:.88rem;color:#6b5236}
 .rec{color:var(--lantern);font-weight:700}
+
+/* 3D 版操作區：整個畫面都能往下拉；底部的力道條只負責顯示 */
+#power{position:absolute;left:12px;right:12px;bottom:12px;height:58px;border-radius:12px;background:rgba(23,18,31,.7);border:2px solid rgba(255,255,255,.25);z-index:3;overflow:hidden;pointer-events:none}
+#mark{position:absolute;top:0;bottom:0;left:-9px;width:3px;background:#fff;opacity:.85}
+#fill{position:absolute;left:0;top:0;bottom:0;width:50%;background:linear-gradient(90deg,#b8562c,var(--lamp))}
+#power span{position:absolute;inset:0;display:grid;place-items:center;font-weight:900;color:#fff3e0;text-shadow:0 1px 3px #000;pointer-events:none}
+#tip{position:absolute;left:0;right:0;top:12px;text-align:center;font-weight:900;font-size:1.3rem;color:var(--lamp);text-shadow:0 2px 6px #000;pointer-events:none;z-index:2}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 <header class="hud">
   <div class="brand">夜市彈珠台</div>
-  <div class="stat"><span>彈珠</span><b id="balls">10</b></div>
+  <div class="stat"><span>彈珠</span><b id="balls">40</b></div>
   <div class="stat"><span>分數</span><b id="score">0</b></div>
   <div class="stat"><span>最高</span><b id="best">0</b></div>
 </header>
 <main class="stage" id="stage">
   <canvas id="cv"></canvas>
+  <div id="tip"></div>
+  <div id="power"><div id="fill"></div><div id="mark"></div><span id="plabel"></span></div>
   <section class="overlay" id="overlay">
-    <h1 id="ov-title">彈珠台 一局十顆</h1>
-    <p id="ov-text">按住畫面蓄力，力道條會來回跑，放開就把彈珠打出去。力道決定彈珠從哪裡落下，穿過釘子掉進下面的格子，中間 100 分最高。</p>
-    <div class="row"><button class="btn" id="ov-btn">拿彈珠</button><span class="keys" id="ov-keys">電腦按住空白鍵也可以</span></div>
+    <h1 id="ov-title">彈珠台 四十顆彈珠</h1>
+    <p id="ov-text">按住畫面往下拉，就像拉彈簧拉桿，拉越長力道越大，放開就發射。下面的力道條會顯示目前力道，白線是上一發的力道。力道決定彈珠從哪裡落下。打進中央「START」會轉動數字，三個一樣就是大當たり，底下的大獎口打開八秒。兩側小口會退彈珠給你。</p>
+    <div class="row"><button class="btn" id="ov-btn">開始</button><span class="keys" id="ov-keys">電腦：按住空白鍵蓄力，放開發射</span></div>
   </section>
 </main>
 <script>
@@ -54,10 +64,11 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 };
 const $ = id => document.getElementById(id);
-const stage = $('stage'), cv = $('cv'), ctx = cv.getContext('2d'), ov = $('overlay'), ovBtn = $('ov-btn');
+const stage = $('stage'), ov = $('overlay'), ovBtn = $('ov-btn');
+if (!window.THREE) { $('ov-title').textContent = '3D 元件載入失敗'; $('ov-text').textContent = '這款遊戲需要連上網路載入 three.js，請確認網路後重新整理。'; ovBtn.hidden = true; return; }
 
 let actx = null;
-function tone(f1, f2 = f1, dur = .12, type = 'triangle', vol = .06) {
+function tone(f1, f2 = f1, dur = .1, type = 'triangle', vol = .05) {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === 'suspended') actx.resume();
@@ -68,116 +79,253 @@ function tone(f1, f2 = f1, dur = .12, type = 'triangle', vol = .06) {
   } catch (e) {}
 }
 
-/* ---------- 共用：寬 400 的畫布座標、結算與上傳 ---------- */
-const W = 400, GAME = 'pachinko';
-let H = 640, S = 1, DPR = 1, state = 'ready', score = 0, overAt = 0, best = store.get(GAME + '.best', 0);
+/* ---------- 可調參數（盤面座標：寬 400、高 620，y 往下） ---------- */
+const STOCK = 40, PULL_PX = 150, CHARGE_TIME = 1.2;     // 起始彈珠數、往下拉幾像素算滿力、空白鍵蓄滿要幾秒
+const GRAV = 900, V_MIN = 845, V_MAX = 1075;            // 重力、最小與最大發射速度
+const BR = 6, PR = 3.5;                                 // 彈珠、釘子半徑
+const ARC = { x: 200, y: 200, r: 190 }, LANE = 372, WALL_TOP = 215;   // 上方圓弧、發射軌道內牆的 x、內牆頂端的 y
+const JACKPOT_RATE = .15, OPEN_TIME = 8;                 // 轉到三個一樣的機率、大獎口開幾秒
+const POCKETS = [                                       // 入賞口：位置、寬度、分數、退幾顆彈珠
+  { id: 'start', x: 185, y: 400, w: 30, pts: 10, back: 1 },
+  { id: 'left',  x: 78,  y: 452, w: 28, pts: 20, back: 1 },
+  { id: 'right', x: 292, y: 452, w: 28, pts: 20, back: 1 },
+  { id: 'big',   x: 185, y: 556, w: 96, pts: 50, back: 1 }      // 大獎口：大當たり時才打開
+];
+const MILLS = [{ x: 118, y: 300, dir: 1 }, { x: 252, y: 300, dir: -1 }];   // 風車：會把彈珠往旋轉方向帶
+
+// 釘子：交錯的格子，避開入賞口、風車和大獎口
+const pegs = [];
+for (let row = 0, y = 226; y <= 530; row++, y += 34)
+  for (let x = row % 2 ? 43 : 26; x <= 356; x += 34) {
+    if (Math.hypot(x - ARC.x, y - ARC.y) > ARC.r - 14 && y < ARC.y) continue;
+    if (MILLS.some(m => Math.hypot(x - m.x, y - m.y) < 24)) continue;
+    if (POCKETS.some(p => Math.abs(x - p.x) < p.w / 2 + 8 && y > p.y - 30 && y < p.y + 22)) continue;
+    pegs.push({ x, y });
+  }
+for (const p of POCKETS.slice(0, 3)) pegs.push({ x: p.x - p.w / 2 - 3, y: p.y - 2 }, { x: p.x + p.w / 2 + 3, y: p.y - 2 });   // 杯口兩側的釘子
+pegs.push({ x: LANE, y: WALL_TOP });                    // 內牆頂端當成一根釘子，彈珠不會卡住
+
+/* ---------- 狀態 ---------- */
+let state = 'ready', stock = STOCK, score = 0, power = 0, pulling = false, pullY = 0, plunger = 0, overAt = 0, best = store.get('pachinko.best', 0);
+let balls = [], hold = 0, spinT = 0, digits = [7, 3, 5], openT = 0, flash = 0, idleT = 0;
+const keys = {};
 $('best').textContent = best;
-function fit() {
-  const r = stage.getBoundingClientRect(); if (!r.width) return;
-  DPR = Math.min(devicePixelRatio || 1, 2);
-  cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR);
-  S = r.width / W; H = r.height / S;
+function hud() { $('balls').textContent = stock; $('score').textContent = score; }
+function say(t, ms = 1400) { $('tip').textContent = t; clearTimeout(say.t); say.t = setTimeout(() => { $('tip').textContent = ''; }, ms); }
+const IDLE_LABEL = '按住畫面往下拉 ・ 放開發射';
+function setPower(v) {                                  // 力道 0~1；力道條與文字跟著更新
+  power = Math.max(0, Math.min(1, v)); $('fill').style.width = power * 100 + '%';
+  $('plabel').textContent = pulling ? `力道 ${Math.round(power * 100)}%` : IDLE_LABEL;
 }
-function finish(title, text) {
+const laneBusy = () => balls.some(b => b.lane && b.y > 500);
+function pullStart(y) { if (state !== 'play' || stock <= 0 || pulling) return; pulling = true; pullY = y; setPower(0); }
+function pullEnd() {                                    // 放開拉桿：力道夠就發射
+  if (!pulling) return;
+  pulling = false;
+  if (power < .04) say('再拉長一點', 600); else if (laneBusy()) say('上一顆還在軌道上', 600); else fire();
+  setPower(0);
+}
+function start() { balls = []; stock = STOCK; score = 0; hold = 0; spinT = 0; openT = 0; idleT = 0; state = 'play'; ov.hidden = true; ovBtn.blur(); hud(); drawLcd(); }
+function fire() {
+  stock--; hud(); tone(260, 400 + power * 700, .1); $('mark').style.left = power * 100 + '%';      // 白線記住這一發的力道
+  balls.push({ x: 390 - BR, y: 566, vx: 0, vy: -(V_MIN + power * (V_MAX - V_MIN) + (Math.random() - .5) * 14), lane: true, still: 0 });
+}
+function enter(p) {                                     // 彈珠進了入賞口
+  score += p.pts; stock += p.back; flash = .3; hud();
+  if (p.id === 'start') { hold = Math.min(4, hold + 1); tone(600, 900, .12, 'sine'); drawLcd(); }
+  else if (p.id === 'big') tone(900, 1400, .1, 'sine', .07);
+  else { say(`退 ${p.back} 顆`, 700); tone(500, 800, .15, 'sine'); }
+}
+function spinEnd() {
+  const win = Math.random() < JACKPOT_RATE, d = () => Math.random() * 9 + 1 | 0;
+  if (win) { const v = d(); digits = [v, v, v]; openT = OPEN_TIME; score += 100; hud(); say('大當たり！大獎口打開', 2400); [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => tone(f, f, .16, 'square', .05), i * 90)); }
+  else { do digits = [d(), d(), d()]; while (digits[0] === digits[1] && digits[1] === digits[2]); tone(300, 200, .15); }
+  drawLcd();
+}
+function gameOver() {
   state = 'over'; overAt = performance.now();
   const rec = score > best;
-  try { parent.postMessage({ type: 'arcade:score', game: GAME, score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
-  if (rec) { best = score; store.set(GAME + '.best', best); $('best').textContent = best; }
-  $('ov-title').textContent = title;
-  $('ov-text').innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + text + `最高紀錄 ${best} 分。`;
+  try { parent.postMessage({ type: 'arcade:score', game: 'pachinko', score }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
+  if (rec) { best = score; store.set('pachinko.best', best); $('best').textContent = best; }
+  $('ov-title').textContent = '彈珠打完了';
+  $('ov-text').innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `這局 ${score} 分，最高紀錄 ${best} 分。`;
   ovBtn.textContent = '再來一局'; $('ov-keys').textContent = ''; ov.hidden = false;
 }
-const pos = e => { const r = stage.getBoundingClientRect(); return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S }; };
 
-/* ---------- 盤面：左邊是釘陣，右邊一條發射軌道，底下七格分數 ---------- */
-const BALLS = 10, LEFT = 14, RIGHT = 352, BR = 7, PR = 5, GRAV = 700;
-const SLOTS = [10, 50, 20, 100, 20, 50, 10], SW = (RIGHT - LEFT) / SLOTS.length;
-let balls = BALLS, phase = 'aim', power = 0, charging = false, ball = null, pegs = [], floor = 560, floats = [], lit = -1, litT = 0;
-
-function layout() {            // 釘子交錯排列，依畫面高度決定排數
-  floor = H - 64; pegs = [];
-  for (let row = 0, y = 130; y < floor - 60; row++, y += 46)
-    for (let x = LEFT + (row % 2 ? 46 : 22); x < RIGHT - 10; x += 48) pegs.push({ x, y });
+/* ---------- 物理：每顆彈珠照順序處理 重力 → 牆 → 圓弧 → 釘子 → 風車 → 入賞口 ---------- */
+function bounce(b, cx, cy, min, e, kick = 0, spin = 0) {   // 撞上圓形障礙物：沿法線反彈，spin 是切線方向多給的速度
+  const dx = b.x - cx, dy = b.y - cy, d = Math.hypot(dx, dy);
+  if (d >= min || d === 0) return false;
+  const nx = dx / d, ny = dy / d, vn = b.vx * nx + b.vy * ny;
+  b.x = cx + nx * min; b.y = cy + ny * min;
+  if (vn < 0) { b.vx -= (1 + e) * vn * nx; b.vy -= (1 + e) * vn * ny; b.vx += (Math.random() - .5) * kick - ny * spin; b.vy += nx * spin; return vn < -60; }
+  return false;
 }
-function hud() { $('balls').textContent = balls; $('score').textContent = score; }
-function start() { layout(); balls = BALLS; score = 0; phase = 'aim'; ball = null; floats = []; state = 'play'; hud(); }
-
-function press() { if (state === 'play' && phase === 'aim') { charging = true; power = 0; } }
-function release() {
-  if (!charging) return;
-  charging = false; phase = 'fly'; balls--; hud(); tone(300, 900, .2);
-  ball = { x: 376, y: H - 80, vx: 0, vy: -900, lane: true, launch: power };   // 先沿軌道往上衝
-}
-function land() {
-  const i = Math.max(0, Math.min(SLOTS.length - 1, Math.floor((ball.x - LEFT) / SW)));
-  score += SLOTS[i]; lit = i; litT = .8; hud();
-  floats.push({ text: '+' + SLOTS[i], x: LEFT + (i + .5) * SW, y: floor - 20, t: 0 });
-  tone(500 + SLOTS[i] * 6, 900 + SLOTS[i] * 6, .2, 'sine');
-  ball = null;
-  if (balls > 0) phase = 'aim'; else setTimeout(() => finish('彈珠打完了', `這局 ${score} 分，`), 700);
-}
-function step(dt) {
-  const b = ball;
-  if (b.lane) {                // 軌道裡直直往上，到頂後依力道往左飛
-    b.y += b.vy * dt;
-    if (b.y < 70) { b.lane = false; b.y = 70; b.vx = -(70 + b.launch * 400); b.vy = 0; }
-    return;
-  }
+function stepBall(b, dt) {
   b.vy += GRAV * dt; b.x += b.vx * dt; b.y += b.vy * dt;
-  if (b.x < LEFT + BR) { b.x = LEFT + BR; b.vx = Math.abs(b.vx) * .6; }
-  if (b.x > RIGHT - BR && b.y > 110) { b.x = RIGHT - BR; b.vx = -Math.abs(b.vx) * .6; }
-  for (const p of pegs) {      // 撞釘子：沿法線反彈，再加一點隨機
-    const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy), min = BR + PR;
-    if (d >= min || d === 0) continue;
-    const nx = dx / d, ny = dy / d, vn = b.vx * nx + b.vy * ny;
-    b.x = p.x + nx * min; b.y = p.y + ny * min;
-    if (vn < 0) { b.vx -= 1.55 * vn * nx; b.vy -= 1.55 * vn * ny; b.vx += (Math.random() - .5) * 40; tone(900, 700, .03, 'square', .02); }
+  if (b.y < WALL_TOP) b.lane = b.x > LANE;             // 高過內牆頂端時，看它在牆的哪一邊
+  if (b.y >= ARC.y) {                                   // 直牆：左牆、右外牆、軌道內牆
+    if (b.x < 10 + BR) { b.x = 10 + BR; b.vx = Math.abs(b.vx) * .5; }
+    if (b.x > 390 - BR) { b.x = 390 - BR; b.vx = -Math.abs(b.vx) * .5; }
+    if (b.y > WALL_TOP) { if (b.lane && b.x < LANE + BR) { b.x = LANE + BR; b.vx = Math.abs(b.vx) * .3; } else if (!b.lane && b.x > LANE - BR) { b.x = LANE - BR; b.vx = -Math.abs(b.vx) * .5; } }
+  } else {                                              // 上方圓弧：彈珠貼著弧線滑過去
+    const dx = b.x - ARC.x, dy = b.y - ARC.y, d = Math.hypot(dx, dy), max = ARC.r - BR;
+    if (d > max) { const nx = dx / d, ny = dy / d, vn = b.vx * nx + b.vy * ny; b.x = ARC.x + nx * max; b.y = ARC.y + ny * max; if (vn > 0) { b.vx -= 1.15 * vn * nx; b.vy -= 1.15 * vn * ny; } }
   }
-  if (b.y > floor - BR) land();
+  if (b.lane) return;
+  for (const p of pegs) if (Math.abs(p.x - b.x) < 12 && bounce(b, p.x, p.y, BR + PR, .5, 36)) tone(1500, 1100, .02, 'square', .012);
+  for (const m of MILLS) bounce(b, m.x, m.y, BR + 11, .4, 20, 130 * m.dir);
+  for (const p of POCKETS) {
+    if (p.id === 'big' && openT <= 0) continue;
+    if (b.vy > 0 && Math.abs(b.x - p.x) < p.w / 2 && b.y > p.y && b.y < p.y + 16) { b.dead = true; enter(p); return; }
+  }
 }
 function update(dt) {
-  for (const f of floats) f.t += dt;
-  floats = floats.filter(f => f.t < 1); litT -= dt;
+  flash = Math.max(0, flash - dt);
+  plunger += ((pulling ? power : 0) - plunger) * Math.min(1, dt * (pulling ? 30 : 22));   // 拉桿跟著手，放開後彈回
   if (state !== 'play') return;
-  if (charging) power = Math.abs(((performance.now() / 700) % 2) - 1);   // 0→1→0 來回
-  if (ball) { step(dt / 2); if (ball) step(dt / 2); }
+  if (keys.Space && pulling) setPower(power + dt / CHARGE_TIME);            // 空白鍵：按著蓄力
+  for (let s = 0; s < 4; s++) {                         // 一格畫面拆成四小步，彈珠才不會穿過釘子
+    const h = dt / 4;
+    for (const b of balls) if (!b.dead) stepBall(b, h);
+    for (let i = 0; i < balls.length; i++) for (let j = i + 1; j < balls.length; j++) {   // 彈珠互撞
+      const a = balls[i], b = balls[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+      if (d >= BR * 2 || d === 0 || a.dead || b.dead || a.lane !== b.lane) continue;
+      const nx = dx / d, ny = dy / d, p = (BR * 2 - d) / 2, rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+      a.x -= nx * p; a.y -= ny * p; b.x += nx * p; b.y += ny * p;
+      if (rv < 0) { a.vx += rv * nx * .9; a.vy += rv * ny * .9; b.vx -= rv * nx * .9; b.vy -= rv * ny * .9; }
+    }
+  }
+  for (const b of balls) {
+    if (b.lane && b.y > 580) { b.dead = true; stock++; hud(); say('力道不夠，退回', 700); }      // 沒打上去，掉回軌道
+    else if (b.y > 606) b.dead = true;                                                             // 掉出底部
+    b.still = Math.hypot(b.vx, b.vy) < 8 ? b.still + dt : 0;
+    if (b.still > 1) { b.vx += (Math.random() - .5) * 120; b.vy -= 60; b.still = 0; }              // 卡住就推一下
+  }
+  balls = balls.filter(b => !b.dead);
+  if (openT > 0) { openT -= dt; if (openT <= 0) say('大獎口關閉', 900); }
+  if (spinT > 0) { spinT -= dt; if (Math.random() < .4) { digits = digits.map(() => Math.random() * 9 + 1 | 0); drawLcd(); } if (spinT <= 0) spinEnd(); }
+  else if (hold > 0 && openT <= 0) { hold--; spinT = 1.5; }
+  const busy = balls.length || spinT > 0 || hold > 0 || openT > 0;
+  idleT = stock <= 0 && !busy ? idleT + dt : 0;
+  if (idleT > .8) gameOver();
 }
-function draw() {
-  ctx.fillStyle = '#2a1c33'; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#3d2740'; ctx.fillRect(LEFT, 50, RIGHT - LEFT, floor - 50);                        // 盤面
-  ctx.fillStyle = '#1d1424'; ctx.fillRect(RIGHT + 8, 50, 32, H - 100);                                 // 發射軌道
-  SLOTS.forEach((v, i) => {
-    const x = LEFT + i * SW;
-    ctx.fillStyle = i === lit && litT > 0 ? '#ffb648' : v >= 100 ? '#e23b2e' : v >= 50 ? '#b8562c' : '#5b3d27';
-    ctx.fillRect(x + 1, floor, SW - 2, 44);
-    ctx.fillStyle = '#fff3e0'; ctx.font = '900 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(v, x + SW / 2, floor + 22);
-    ctx.fillStyle = '#c9a06a'; ctx.fillRect(x - 1, floor - 26, 2, 26);
-  });
-  ctx.fillStyle = '#ffd98a'; for (const p of pegs) { ctx.beginPath(); ctx.arc(p.x, p.y, PR, 0, 7); ctx.fill(); }
-  if (ball) { ctx.fillStyle = '#eef0f4'; ctx.beginPath(); ctx.arc(ball.x, ball.y, BR, 0, 7); ctx.fill(); }
-  else if (state === 'play' && phase === 'aim') { ctx.fillStyle = '#eef0f4'; ctx.beginPath(); ctx.arc(376, H - 80, BR, 0, 7); ctx.fill(); }
-  const gh = H - 220;                                                                                   // 力道條
-  ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(368, 110, 16, gh);
-  ctx.fillStyle = '#ffb648'; ctx.fillRect(368, 110 + gh * (1 - power), 16, gh * power);
-  ctx.textAlign = 'center'; ctx.font = '900 18px sans-serif';
-  for (const f of floats) { ctx.globalAlpha = 1 - f.t; ctx.fillStyle = '#fff3e0'; ctx.fillText(f.text, f.x, f.y - f.t * 30); }
-  ctx.globalAlpha = 1;
-  if (state === 'play' && phase === 'aim') { ctx.fillStyle = '#fff3e0'; ctx.font = '700 14px sans-serif'; ctx.fillText(charging ? '放開發射' : '按住蓄力', (LEFT + RIGHT) / 2, 80); }
+
+/* ---------- 3D 場景：盤面座標 (x, y) 對應到 3D 的 ((x-200)/100, (300-y)/100, 高度) ---------- */
+const T = THREE, cv = $('cv'), K = .01, X = x => (x - 200) * K, Y = y => (300 - y) * K;
+const renderer = new T.WebGLRenderer({ canvas: cv, antialias: true });
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+const scene = new T.Scene(); scene.background = new T.Color(0x17121f);
+const camera = new T.PerspectiveCamera(38, 1, .1, 60);
+const board = new T.Group(); board.rotation.x = -.5; scene.add(board);     // 整個盤面往後躺，看得出立體
+const phong = (c, o = {}) => new T.MeshPhongMaterial({ color: c, shininess: 60, ...o });
+const add = (geo, m, x, y, z, cast = true) => { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = cast; o.receiveShadow = true; board.add(o); return o; };
+const box = (w, h, d, c, x, y, z) => add(new T.BoxGeometry(w, h, d), phong(c), x, y, z);
+
+scene.add(new T.AmbientLight(0xfff0e0, .55));
+const sun = new T.DirectionalLight(0xffffff, .85); sun.position.set(-2.5, 5, 7); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 5, bottom: -5 }); scene.add(sun);
+const glow = new T.PointLight(0xffb648, .6, 9); glow.position.set(0, 0, 2.5); board.add(glow);
+
+// 盤面底圖：用 2D 畫布畫好再貼上去
+const art = document.createElement('canvas'); art.width = 800; art.height = 1240;
+(function paint() {
+  const a = art.getContext('2d'); a.scale(2, 2);
+  a.fillStyle = '#2b1d14'; a.fillRect(0, 0, 400, 620);
+  a.beginPath(); a.moveTo(10, 610); a.lineTo(10, ARC.y); a.arc(ARC.x, ARC.y, ARC.r, Math.PI, 0); a.lineTo(390, 610); a.closePath();
+  const g = a.createLinearGradient(0, 0, 0, 620); g.addColorStop(0, '#1f3a5c'); g.addColorStop(.55, '#3a2a66'); g.addColorStop(1, '#6a2a52');
+  a.fillStyle = g; a.fill(); a.save(); a.clip();
+  a.strokeStyle = 'rgba(255,214,120,.16)'; a.lineWidth = 2;
+  for (let r = 40; r < 420; r += 36) { a.beginPath(); a.arc(185, 400, r, 0, 7); a.stroke(); }                 // 以 START 為中心的同心圓
+  a.fillStyle = 'rgba(255,255,255,.5)'; for (let i = 0; i < 60; i++) a.fillRect((i * 97) % 380 + 10, (i * 53) % 280 + 20, 1.6, 1.6);   // 星星
+  a.fillStyle = 'rgba(0,0,0,.35)'; a.fillRect(LANE, WALL_TOP, 18, 420);                                       // 發射軌道
+  a.textAlign = 'center'; a.font = '900 11px sans-serif';
+  for (const p of POCKETS) { a.fillStyle = p.id === 'big' ? '#ffd24a' : '#fff3e0'; a.fillText(p.id === 'start' ? 'START' : p.id === 'big' ? '大 獎 口' : `退${p.back}顆`, p.x, p.y + 34); }
+  a.restore();
+})();
+add(new T.PlaneGeometry(4, 6.2), new T.MeshPhongMaterial({ map: new T.CanvasTexture(art), shininess: 12 }), 0, -.1, 0, false);
+
+// 外框：上方半圓的金屬軌、左右直牆、軌道內牆、底板
+const rail = add(new T.TorusGeometry(ARC.r * K, .05, 10, 64, Math.PI), phong(0xd9c58a, { shininess: 120 }), X(ARC.x), Y(ARC.y), .08);
+box(.08, 4.1, .2, 0xb8281c, X(6), Y(405), .1); box(.08, 4.1, .2, 0xb8281c, X(394), Y(405), .1);
+box(.04, 3.95, .16, 0xd9c58a, X(LANE), Y(WALL_TOP + 197), .08); box(3.96, .08, .2, 0xb8281c, 0, Y(612), .1);
+
+// 釘子：一次畫全部（InstancedMesh）
+const pegGeo = new T.CylinderGeometry(PR * K, PR * K, .16, 10); pegGeo.rotateX(Math.PI / 2);
+const pegMesh = new T.InstancedMesh(pegGeo, phong(0xf0d68a, { shininess: 140, specular: 0xffffff }), pegs.length);
+pegs.forEach((p, i) => pegMesh.setMatrixAt(i, new T.Matrix4().makeTranslation(X(p.x), Y(p.y), .08))); pegMesh.castShadow = true; board.add(pegMesh);
+
+// 風車、入賞口、大獎口的門、轉盤螢幕
+const mills = MILLS.map(m => { const g = new T.Group(); g.position.set(X(m.x), Y(m.y), .09); board.add(g);
+  for (let i = 0; i < 4; i++) { const b = new T.Mesh(new T.BoxGeometry(.2, .035, .1), phong(i % 2 ? 0xe23b2e : 0xfff3e0)); b.rotation.z = i * Math.PI / 4; b.castShadow = true; g.add(b); } return g; });
+const cups = POCKETS.slice(0, 3).map(p => box(p.w * K + .06, .1, .16, p.id === 'start' ? 0xffb648 : 0x3fb36b, X(p.x), Y(p.y + 17), .08));
+const big = POCKETS[3], door = new T.Group(); door.position.set(X(big.x), Y(big.y + 18), .02); board.add(door);
+const doorMesh = new T.Mesh(new T.BoxGeometry(big.w * K, .26, .03), phong(0xffd24a, { emissive: 0x332200 })); doorMesh.position.y = .13; doorMesh.castShadow = true; door.add(doorMesh);
+const lcd = document.createElement('canvas'); lcd.width = 260; lcd.height = 112; const lcdTex = new T.CanvasTexture(lcd);
+add(new T.BoxGeometry(1.42, .68, .06), phong(0x17121f), X(185), Y(118), .03);
+add(new T.PlaneGeometry(1.3, .56), new T.MeshBasicMaterial({ map: lcdTex }), X(185), Y(118), .065, false);
+function drawLcd() {
+  const a = lcd.getContext('2d'); a.fillStyle = '#0c0a12'; a.fillRect(0, 0, 260, 112);
+  a.font = '900 70px sans-serif'; a.textAlign = 'center'; a.textBaseline = 'middle';
+  digits.forEach((d, i) => { a.fillStyle = openT > 0 ? '#ffd24a' : '#ff5a4a'; a.fillText(d, 50 + i * 80, 50); });
+  for (let i = 0; i < 4; i++) { a.fillStyle = i < hold ? '#ffd24a' : '#3a3046'; a.beginPath(); a.arc(100 + i * 20, 98, 6, 0, 7); a.fill(); }   // 保留的轉動次數
+  lcdTex.needsUpdate = true;
 }
-stage.addEventListener('pointerdown', e => { if (e.target.closest('.overlay')) return; e.preventDefault(); if (state === 'over') { if (performance.now() - overAt > 900) { start(); ov.hidden = true; } return; } press(); });
-addEventListener('pointerup', release); addEventListener('pointercancel', release);
-addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat) { e.preventDefault(); press(); } });
-addEventListener('keyup', e => { if (e.code === 'Space') release(); });
-layout();
+drawLcd();
+
+// 彈珠：先做好一批，要用時再顯示
+const ballGeo = new T.SphereGeometry(BR * K, 20, 14), ballMat = phong(0xe8ecf2, { shininess: 200, specular: 0xffffff });
+const ballMeshes = Array.from({ length: 24 }, () => { const m = add(ballGeo, ballMat, 0, 0, BR * K); m.visible = false; return m; });
+
+// 拉桿：頂住彈珠的推頭、穿過底框的桿子、握把，還有會被壓縮的彈簧
+const PL = { x: 390 - BR, y: 576, travel: 44 };          // 推頭位置；拉滿時往下移動多少
+const plug = new T.Group(); board.add(plug);
+const cyl = (r, h, c, y) => { const m = new T.Mesh(new T.CylinderGeometry(r, r, h, 14), phong(c, { shininess: 120 })); m.position.y = y; m.castShadow = true; plug.add(m); return m; };
+cyl(.07, .07, 0xd9c58a, 0); cyl(.03, .66, 0xaeb5c2, -.36);
+const knob = new T.Mesh(new T.SphereGeometry(.13, 18, 14), phong(0xe23b2e, { shininess: 100 })); knob.position.y = -.72; knob.castShadow = true; plug.add(knob);
+const coils = Array.from({ length: 6 }, () => { const m = add(new T.TorusGeometry(.06, .013, 6, 14), phong(0xdfe3ea, { shininess: 120 }), X(PL.x), 0, .08); m.rotation.x = Math.PI / 2; return m; });
+const readyBall = add(ballGeo, ballMat, X(PL.x), 0, BR * K);
+
+function render(t) {
+  const py = PL.y + plunger * PL.travel;                                                  // 拉桿目前位置（盤面座標）
+  plug.position.set(X(PL.x), Y(py), .08);
+  coils.forEach((c, i) => { c.position.y = Y(py + 6 + (606 - py - 6) * i / 5); });        // 彈簧夾在推頭和底框之間，越拉越密
+  readyBall.visible = state === 'play' && stock > 0 && !laneBusy(); readyBall.position.y = Y(py - 10);
+  ballMeshes.forEach((m, i) => { const b = balls[i]; m.visible = !!b; if (b) m.position.set(X(b.x), Y(b.y), BR * K); });
+  mills.forEach((g, i) => { g.rotation.z = -t * 5 * MILLS[i].dir; });
+  door.rotation.x += ((openT > 0 ? 1.35 : 0) - door.rotation.x) * .2;                     // 大獎口的門往前倒下來
+  doorMesh.material.emissive.setHex(openT > 0 && Math.sin(t * 14) > 0 ? 0x886600 : 0x221600);
+  glow.intensity = .6 + flash * 3 + (openT > 0 ? .8 + Math.sin(t * 10) * .5 : 0);
+  cups[0].material.emissive.setHex(spinT > 0 ? 0x664400 : 0);
+  renderer.render(scene, camera);
+}
+function fit() {
+  const r = stage.getBoundingClientRect(); if (!r.width) return;
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
+  const half = Math.tan(camera.fov * Math.PI / 360), d = Math.max(2.75 / (half * camera.aspect), 3.9 / half);   // 寬和高都要放得下
+  camera.position.set(0, -1.6, d); camera.lookAt(0, -.4, 0);
+}
+
+/* ---------- 輸入：按住畫面往下拉、放開發射；空白鍵按住蓄力 ---------- */
+stage.addEventListener('pointerdown', e => { if (e.target.closest('.overlay')) return; e.preventDefault(); stage.setPointerCapture(e.pointerId); pullStart(e.clientY); });
+stage.addEventListener('pointermove', e => { if (pulling && !keys.Space) setPower((e.clientY - pullY) / PULL_PX); });
+stage.addEventListener('pointerup', pullEnd); stage.addEventListener('pointercancel', pullEnd);
+ovBtn.addEventListener('click', () => { if (state === 'over' && performance.now() - overAt < 600) return; start(); });
+addEventListener('keydown', e => {
+  if (e.code !== 'Space' || e.repeat) return;
+  e.preventDefault(); keys.Space = true;
+  if (state === 'play') pullStart(0); else if (state !== 'over' || performance.now() - overAt > 600) start();
+});
+addEventListener('keyup', e => { if (e.code === 'Space') { pullEnd(); keys.Space = false; } });
 
 let lastT = performance.now();
 function frame(now) {
-  const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30); lastT = now;
-  update(dt); ctx.setTransform(DPR * S, 0, 0, DPR * S, 0, 0); draw(now / 1000); requestAnimationFrame(frame);
+  const dt = Math.min(Math.max((now - lastT) / 1000, .001), 1 / 30); lastT = now;
+  update(dt); render(now / 1000); requestAnimationFrame(frame);
 }
-fit();
+fit(); setPower(0);
 if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage); else addEventListener('resize', fit);
-ovBtn.addEventListener('click', () => { if (state === 'over' && performance.now() - overAt < 600) return; start(); ov.hidden = true; ovBtn.blur(); });
 requestAnimationFrame(frame);
 })();
 </script>
