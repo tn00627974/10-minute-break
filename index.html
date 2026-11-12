@@ -483,7 +483,7 @@ renderChips(); renderShelves(); applyFilter(); refreshCards(); route();
 
 <script type="module">
 /* ---------- 線上排行榜：卡片上的第一名、遊戲裡的前 20 名、上傳成績 ---------- */
-import { submitScore, getBoard, cleanName, isMock, watchTop } from './leaderboard.js';
+import { submitScore, getBoard, cleanName, isMock, watchTop, logPlay } from './leaderboard.js';
 
 const $ = id => document.getElementById(id);
 const local = {
@@ -570,8 +570,9 @@ addEventListener('message', async e => {
   if (!frame || e.source !== frame.contentWindow) return;          // 只收目前這款遊戲傳的
   const d = e.data;
   if (!d || d.type !== 'arcade:score' || typeof d.game !== 'string' || !Number.isInteger(d.score)) return;
-  if (!isAsc(d.game) && d.score <= 0) return;
+  if (!isAsc(d.game) && d.score <= 0) { logPlay(d.game, local.get('arcade.name'), d.score); return; }
   const name = await getName();
+  logPlay(d.game, name, d.score);                                  // 每局都記到後台，略過取名就記成匿名
   if (!name) { toast('這次先不上傳，下次玩完會再問你'); return; }
   try {
     const r = await submitScore(d.game, name, d.score);
