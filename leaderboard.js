@@ -57,6 +57,29 @@ export async function submitScore(game, name, score) {
   return { improved: true, best: score };
 }
 
+/* ---------- 後台遊玩紀錄：每局都記，跟排行榜分開，只寫不讀（到 Firebase Console 看）*/
+function deviceId() {
+  try {
+    let id = localStorage.getItem('arcade.device');
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem('arcade.device', id); }
+    return id;
+  } catch (e) { return 'unknown'; }
+}
+export async function logPlay(game, name, score) {
+  const row = { game, score, name: name || null, device: deviceId() };
+  try {
+    if (isMock) {
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem('arcade.mockplays')) || []; } catch (e) {}
+      list.push({ ...row, at: new Date().toISOString() });
+      localStorage.setItem('arcade.mockplays', JSON.stringify(list.slice(-500)));
+      return;
+    }
+    const { F, db } = await firestore();
+    await F.addDoc(F.collection(db, 'plays'), { ...row, at: F.serverTimestamp() });
+  } catch (e) { console.warn('遊玩紀錄寫入失敗', e); }
+}
+
 // 即時監看第一名：cb({ name, score, at } | null)，只回報伺服器確認過的資料（離線快取、自己尚未送達的寫入都跳過）
 export async function watchTop(game, cb, onErr) {
   const { F, db } = await firestore();

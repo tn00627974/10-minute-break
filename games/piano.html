@@ -345,7 +345,6 @@ function gameOver() {
   state = 'over'; overAt = performance.now();
   const rec = hits > best;
   try { parent.postMessage({ type: 'arcade:score', game: 'piano', score: hits }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
-  try { parent.postMessage({ type: 'arcade:score', game: 'piano', score: hits }, '*'); } catch (e) {}   // 交給大廳上傳排行榜
   if (rec) { best = hits; store.set('piano.best', best); bestEl.textContent = best; }
   ovTitle.textContent = fail && fail.missed ? '漏了一個鍵' : '踩到白鍵了';
   ovText.innerHTML = (rec ? '<span class="rec">新紀錄！</span>' : '') + `《${songOf(melody).name}》彈了 ${hits} 個音，最高 ${best} 個。換首曲子或直接再彈一次。`;
