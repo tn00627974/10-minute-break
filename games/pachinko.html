@@ -53,7 +53,7 @@ body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;ali
   <div id="power"><div id="fill"></div><div id="mark"></div><span id="plabel"></span></div>
   <section class="overlay" id="overlay">
     <h1 id="ov-title">彈珠台 四十顆彈珠</h1>
-    <p id="ov-text">按住畫面往下拉，就像拉彈簧拉桿，拉越長力道越大，放開就發射。下面的力道條會顯示目前力道，白線是上一發的力道。力道決定彈珠從哪裡落下。打進中央「START」會轉動數字，三個一樣就是大當たり，底下的大獎口打開八秒。兩側小口會退彈珠給你。</p>
+    <p id="ov-text">按住畫面往下拉，就像拉彈簧拉桿，拉越長力道越大，放開就發射。下面的力道條會顯示目前力道，白線是上一發的力道。力道決定彈珠從哪裡落下。彈珠最後掉進底部八個凹槽，照格子上的分數計分，中間兩格 100 分。打進中央「START」會轉動數字，三個一樣就是大當たり，十二秒內凹槽分數變三倍。兩側小口會退彈珠給你。</p>
     <div class="row"><button class="btn" id="ov-btn">開始</button><span class="keys" id="ov-keys">電腦：按住空白鍵蓄力，放開發射</span></div>
   </section>
 </main>
@@ -84,18 +84,19 @@ const STOCK = 40, PULL_PX = 150, CHARGE_TIME = 1.2;     // 起始彈珠數、往
 const GRAV = 900, V_MIN = 845, V_MAX = 1075;            // 重力、最小與最大發射速度
 const BR = 6, PR = 3.5;                                 // 彈珠、釘子半徑
 const ARC = { x: 200, y: 200, r: 190 }, LANE = 372, WALL_TOP = 215;   // 上方圓弧、發射軌道內牆的 x、內牆頂端的 y
-const JACKPOT_RATE = .15, OPEN_TIME = 8;                 // 轉到三個一樣的機率、大獎口開幾秒
+const JACKPOT_RATE = .15, OPEN_TIME = 12, BONUS = 3;     // 轉到三個一樣的機率、大當たり持續幾秒、期間凹槽分數乘幾倍
+const SLOTS = [10, 50, 20, 100, 100, 20, 50, 10];        // 底部八個凹槽的分數（左到右）
+const SLOT_TOP = 572, SW = (LANE - 10) / SLOTS.length;   // 凹槽隔板頂端的 y、每格寬度
 const POCKETS = [                                       // 入賞口：位置、寬度、分數、退幾顆彈珠
   { id: 'start', x: 185, y: 400, w: 30, pts: 10, back: 1 },
   { id: 'left',  x: 78,  y: 452, w: 28, pts: 20, back: 1 },
-  { id: 'right', x: 292, y: 452, w: 28, pts: 20, back: 1 },
-  { id: 'big',   x: 185, y: 556, w: 96, pts: 50, back: 1 }      // 大獎口：大當たり時才打開
+  { id: 'right', x: 292, y: 452, w: 28, pts: 20, back: 1 }
 ];
 const MILLS = [{ x: 118, y: 300, dir: 1 }, { x: 252, y: 300, dir: -1 }];   // 風車：會把彈珠往旋轉方向帶
 
 // 釘子：交錯的格子，避開入賞口、風車和大獎口
 const pegs = [];
-for (let row = 0, y = 226; y <= 530; row++, y += 34)
+for (let row = 0, y = 226; y <= 540; row++, y += 34)
   for (let x = row % 2 ? 43 : 26; x <= 356; x += 34) {
     if (Math.hypot(x - ARC.x, y - ARC.y) > ARC.r - 14 && y < ARC.y) continue;
     if (MILLS.some(m => Math.hypot(x - m.x, y - m.y) < 24)) continue;
@@ -107,7 +108,7 @@ pegs.push({ x: LANE, y: WALL_TOP });                    // 內牆頂端當成一
 
 /* ---------- 狀態 ---------- */
 let state = 'ready', stock = STOCK, score = 0, power = 0, pulling = false, pullY = 0, plunger = 0, overAt = 0, best = store.get('pachinko.best', 0);
-let balls = [], hold = 0, spinT = 0, digits = [7, 3, 5], openT = 0, flash = 0, idleT = 0;
+let balls = [], lit = SLOTS.map(() => 0), hold = 0, spinT = 0, digits = [7, 3, 5], openT = 0, flash = 0, idleT = 0;
 const keys = {};
 $('best').textContent = best;
 function hud() { $('balls').textContent = stock; $('score').textContent = score; }
@@ -133,12 +134,11 @@ function fire() {
 function enter(p) {                                     // 彈珠進了入賞口
   score += p.pts; stock += p.back; flash = .3; hud();
   if (p.id === 'start') { hold = Math.min(4, hold + 1); tone(600, 900, .12, 'sine'); drawLcd(); }
-  else if (p.id === 'big') tone(900, 1400, .1, 'sine', .07);
   else { say(`退 ${p.back} 顆`, 700); tone(500, 800, .15, 'sine'); }
 }
 function spinEnd() {
   const win = Math.random() < JACKPOT_RATE, d = () => Math.random() * 9 + 1 | 0;
-  if (win) { const v = d(); digits = [v, v, v]; openT = OPEN_TIME; score += 100; hud(); say('大當たり！大獎口打開', 2400); [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => tone(f, f, .16, 'square', .05), i * 90)); }
+  if (win) { const v = d(); digits = [v, v, v]; openT = OPEN_TIME; score += 100; hud(); say(`大當たり！凹槽分數 ×${BONUS}`, 2400); [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => tone(f, f, .16, 'square', .05), i * 90)); }
   else { do digits = [d(), d(), d()]; while (digits[0] === digits[1] && digits[1] === digits[2]); tone(300, 200, .15); }
   drawLcd();
 }
@@ -176,12 +176,21 @@ function stepBall(b, dt) {
   for (const p of pegs) if (Math.abs(p.x - b.x) < 12 && bounce(b, p.x, p.y, BR + PR, .5, 36)) tone(1500, 1100, .02, 'square', .012);
   for (const m of MILLS) bounce(b, m.x, m.y, BR + 11, .4, 20, 130 * m.dir);
   for (const p of POCKETS) {
-    if (p.id === 'big' && openT <= 0) continue;
     if (b.vy > 0 && Math.abs(b.x - p.x) < p.w / 2 && b.y > p.y && b.y < p.y + 16) { b.dead = true; enter(p); return; }
   }
+  if (b.y > SLOT_TOP) {                                 // 掉進凹槽：記住是哪一格，之後被隔板擋在格子裡
+    if (b.slot == null) b.slot = Math.max(0, Math.min(SLOTS.length - 1, Math.floor((b.x - 10) / SW)));
+    const l = 10 + b.slot * SW + BR + 2, r = 10 + (b.slot + 1) * SW - BR - 2;
+    if (b.x < l) { b.x = l; b.vx = Math.abs(b.vx) * .3; } else if (b.x > r) { b.x = r; b.vx = -Math.abs(b.vx) * .3; }
+  }
+}
+function land(b) {                                      // 落到凹槽底：照那一格計分，大當たり期間乘倍
+  const gain = SLOTS[b.slot] * (openT > 0 ? BONUS : 1);
+  score += gain; lit[b.slot] = .7; b.dead = true; hud();
+  tone(400 + gain * 3, 700 + gain * 3, .15, 'sine'); if (gain >= 100) say('+' + gain, 600);
 }
 function update(dt) {
-  flash = Math.max(0, flash - dt);
+  flash = Math.max(0, flash - dt); lit = lit.map(v => Math.max(0, v - dt));
   plunger += ((pulling ? power : 0) - plunger) * Math.min(1, dt * (pulling ? 30 : 22));   // 拉桿跟著手，放開後彈回
   if (state !== 'play') return;
   if (keys.Space && pulling) setPower(power + dt / CHARGE_TIME);            // 空白鍵：按著蓄力
@@ -198,12 +207,12 @@ function update(dt) {
   }
   for (const b of balls) {
     if (b.lane && b.y > 580) { b.dead = true; stock++; hud(); say('力道不夠，退回', 700); }      // 沒打上去，掉回軌道
-    else if (b.y > 606) b.dead = true;                                                             // 掉出底部
+    else if (b.y > 600 && b.slot != null) land(b);                                                 // 落到凹槽底
     b.still = Math.hypot(b.vx, b.vy) < 8 ? b.still + dt : 0;
     if (b.still > 1) { b.vx += (Math.random() - .5) * 120; b.vy -= 60; b.still = 0; }              // 卡住就推一下
   }
   balls = balls.filter(b => !b.dead);
-  if (openT > 0) { openT -= dt; if (openT <= 0) say('大獎口關閉', 900); }
+  if (openT > 0) { openT -= dt; if (openT <= 0) { say('大當たり結束', 900); drawLcd(); } }
   if (spinT > 0) { spinT -= dt; if (Math.random() < .4) { digits = digits.map(() => Math.random() * 9 + 1 | 0); drawLcd(); } if (spinT <= 0) spinEnd(); }
   else if (hold > 0 && openT <= 0) { hold--; spinT = 1.5; }
   const busy = balls.length || spinT > 0 || hold > 0 || openT > 0;
@@ -240,7 +249,9 @@ const art = document.createElement('canvas'); art.width = 800; art.height = 1240
   a.fillStyle = 'rgba(255,255,255,.5)'; for (let i = 0; i < 60; i++) a.fillRect((i * 97) % 380 + 10, (i * 53) % 280 + 20, 1.6, 1.6);   // 星星
   a.fillStyle = 'rgba(0,0,0,.35)'; a.fillRect(LANE, WALL_TOP, 18, 420);                                       // 發射軌道
   a.textAlign = 'center'; a.font = '900 11px sans-serif';
-  for (const p of POCKETS) { a.fillStyle = p.id === 'big' ? '#ffd24a' : '#fff3e0'; a.fillText(p.id === 'start' ? 'START' : p.id === 'big' ? '大 獎 口' : `退${p.back}顆`, p.x, p.y + 34); }
+  for (const p of POCKETS) { a.fillStyle = '#fff3e0'; a.fillText(p.id === 'start' ? 'START' : `退${p.back}顆`, p.x, p.y + 34); }
+  a.font = '900 15px sans-serif';
+  SLOTS.forEach((v, i) => { a.fillStyle = v >= 100 ? '#ffd24a' : '#fff3e0'; a.fillText(v, 10 + (i + .5) * SW, 596); });   // 凹槽分數
   a.restore();
 })();
 add(new T.PlaneGeometry(4, 6.2), new T.MeshPhongMaterial({ map: new T.CanvasTexture(art), shininess: 12 }), 0, -.1, 0, false);
@@ -259,8 +270,8 @@ pegs.forEach((p, i) => pegMesh.setMatrixAt(i, new T.Matrix4().makeTranslation(X(
 const mills = MILLS.map(m => { const g = new T.Group(); g.position.set(X(m.x), Y(m.y), .09); board.add(g);
   for (let i = 0; i < 4; i++) { const b = new T.Mesh(new T.BoxGeometry(.2, .035, .1), phong(i % 2 ? 0xe23b2e : 0xfff3e0)); b.rotation.z = i * Math.PI / 4; b.castShadow = true; g.add(b); } return g; });
 const cups = POCKETS.slice(0, 3).map(p => box(p.w * K + .06, .1, .16, p.id === 'start' ? 0xffb648 : 0x3fb36b, X(p.x), Y(p.y + 17), .08));
-const big = POCKETS[3], door = new T.Group(); door.position.set(X(big.x), Y(big.y + 18), .02); board.add(door);
-const doorMesh = new T.Mesh(new T.BoxGeometry(big.w * K, .26, .03), phong(0xffd24a, { emissive: 0x332200 })); doorMesh.position.y = .13; doorMesh.castShadow = true; door.add(doorMesh);
+for (let i = 1; i < SLOTS.length; i++) box(.03, (606 - SLOT_TOP) * K, .16, 0xd9c58a, X(10 + i * SW), Y((606 + SLOT_TOP) / 2), .08);   // 凹槽隔板
+const slotGlow = SLOTS.map((v, i) => add(new T.PlaneGeometry(SW * K - .05, (606 - SLOT_TOP) * K), new T.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0 }), X(10 + (i + .5) * SW), Y((606 + SLOT_TOP) / 2), .004, false));
 const lcd = document.createElement('canvas'); lcd.width = 260; lcd.height = 112; const lcdTex = new T.CanvasTexture(lcd);
 add(new T.BoxGeometry(1.42, .68, .06), phong(0x17121f), X(185), Y(118), .03);
 add(new T.PlaneGeometry(1.3, .56), new T.MeshBasicMaterial({ map: lcdTex }), X(185), Y(118), .065, false);
@@ -293,8 +304,7 @@ function render(t) {
   readyBall.visible = state === 'play' && stock > 0 && !laneBusy(); readyBall.position.y = Y(py - 10);
   ballMeshes.forEach((m, i) => { const b = balls[i]; m.visible = !!b; if (b) m.position.set(X(b.x), Y(b.y), BR * K); });
   mills.forEach((g, i) => { g.rotation.z = -t * 5 * MILLS[i].dir; });
-  door.rotation.x += ((openT > 0 ? 1.35 : 0) - door.rotation.x) * .2;                     // 大獎口的門往前倒下來
-  doorMesh.material.emissive.setHex(openT > 0 && Math.sin(t * 14) > 0 ? 0x886600 : 0x221600);
+  slotGlow.forEach((g, i) => { g.material.opacity = Math.max(lit[i], openT > 0 ? .18 + Math.sin(t * 8 + i) * .1 : 0); });   // 進球的格子亮一下；大當たり時全部閃
   glow.intensity = .6 + flash * 3 + (openT > 0 ? .8 + Math.sin(t * 10) * .5 : 0);
   cups[0].material.emissive.setHex(spinT > 0 ? 0x664400 : 0);
   renderer.render(scene, camera);
