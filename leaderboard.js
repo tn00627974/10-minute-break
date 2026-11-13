@@ -53,7 +53,12 @@ export async function submitScore(game, name, score) {
   const ref = F.doc(db, 'leaderboards', game, 'entries', name);
   const old = await F.getDoc(ref);
   if (old.exists() && !better(game, score, old.data().score)) return { improved: false, best: old.data().score };
+  const top = (await getBoard(game, 1))[0];                  // 寫入前的第一名
   await F.setDoc(ref, { name, score, updatedAt: F.serverTimestamp() });
+  if (!top || better(game, score, top.score))                // 成為新第一名才發動態
+    F.addDoc(F.collection(db, 'feed'), {
+      game, name, score, prev: top && top.name !== name ? top.name : '', at: F.serverTimestamp()
+    }).catch(e => console.warn('動態寫入失敗', e));           // 動態失敗不影響存分數
   return { improved: true, best: score };
 }
 
@@ -90,6 +95,15 @@ export async function watchTop(game, cb, onErr) {
     const d = snap.docs[0]?.data();
     cb(d ? { name: d.name, score: d.score, at: d.updatedAt?.toMillis() ?? null } : null);
   }, onErr);
+}
+
+// 最新 6 筆動態（有人成為新第一名時寫入 feed 集合）
+export async function watchFeed(cb, onErr) {
+  const { F, db } = await firestore();
+  const q = F.query(F.collection(db, 'feed'), F.orderBy('at', 'desc'), F.limit(6));
+  return F.onSnapshot(q, snap => cb(snap.docs.map(d => {
+    const x = d.data(); return { ...x, at: x.at?.toMillis() ?? Date.now() };
+  })), onErr);
 }
 
 // 前 n 名：[{ name, score }]

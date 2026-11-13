@@ -483,7 +483,7 @@ renderChips(); renderShelves(); applyFilter(); refreshCards(); route();
 
 <script type="module">
 /* ---------- 線上排行榜：卡片上的第一名、遊戲裡的前 20 名、上傳成績 ---------- */
-import { submitScore, getBoard, cleanName, isMock, watchTop, logPlay } from './leaderboard.js';
+import { submitScore, getBoard, cleanName, isMock, watchFeed, logPlay } from './leaderboard.js';
 
 const $ = id => document.getElementById(id);
 const local = {
@@ -761,7 +761,7 @@ document.addEventListener('click', e => {                         // 大廳卡�
 }, true);
 
 /* ---------- 最新動態：監看每個榜的第一名，有人刷新就插到最上面 ---------- */
-const FEED_N = 6, known = {}, feed = [];
+const feed = [];
 function rel(at) {
   if (!at) return '';
   const m = Math.floor((Date.now() - at) / 60e3);
@@ -790,24 +790,18 @@ function renderFeed() {
     li.append(a); list.append(li);
   }
 }
-function onTop(b, t, top) {
-  const old = known[b]; known[b] = top;
-  if (!top) { if (!feed.length) $('feed-note').textContent = '還沒有人上榜，玩一局搶第一名！'; return; }
-  if (old === undefined) feed.push({ b, t, ...top });              // 第一次收到：當作現況，不算新消息
-  else if (!old || better(b, top.score, old.score)) {               // 同分或分數沒變好就不算
-    feed.forEach(f => { f.fresh = false; });
-    feed.push({ b, t, ...top, at: top.at ?? Date.now(), isNew: true, fresh: true, prev: old && old.name !== top.name ? old.name : '' });
-  } else return;
-  feed.sort((x, y) => (y.at ?? 0) - (x.at ?? 0)); feed.length = Math.min(feed.length, FEED_N);
-  renderFeed();
-}
 function feedFail(e) { console.warn('最新動態連不上', e); $('feed-note').hidden = false; $('feed-note').textContent = '動態暫時連不上，重新整理再試一次'; }
 if (isMock) $('feed-note').textContent = '本機測試模式沒有即時動態';
-else document.querySelectorAll('.card').forEach(c => {
-  const t = c.querySelector('.name').textContent;
-  const boards = c.dataset.id === 'mines' ? MINES.map(([b, l]) => [b, `${t}・${l}`]) : [[c.dataset.id, t]];
-  for (const [b, bt] of boards) watchTop(b, top => onTop(b, bt, top), feedFail).catch(feedFail);
-});
+else {
+  const titleOf = id => document.querySelector(`.card[data-id="${id.split('-')[0]}"] .name`)?.textContent ?? id;
+  watchFeed(list => {
+    feed.length = 0;
+    list.forEach(x => feed.push({ b: x.game, t: titleOf(x.game), name: x.name, score: x.score,
+                                  prev: x.prev, at: x.at, isNew: Date.now() - x.at < 60e3 }));
+    $('feed-note').textContent = '還沒有人刷新第一名，玩一局搶第一名！';
+    renderFeed();
+  }, feedFail).catch(feedFail);
+}
 
 syncRankPage();
 loadTops();

@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>下課十分鐘</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: a toy-shop pegboard wall. A yellow shop sign hangs at the top; game cards hang below it on hooks, one row per category. Picking a card slides a player layer over the whole board. */
+:root{
+  --board:#e2e5ea;
+  --hole:rgba(36,46,74,.2);
+  --card:#fcfcfa;
+  --ink:#1b2031;
+  --muted:#596178;
+  --line:#c9ced8;
+  --accent:#2c54d1;
+  --on-accent:#ffffff;
+  --sign:#ffd23f;
+  --sign-ink:#1b2031;
+  --peg:#8b919f;
+  --stage:#12141a;
+  --shadow:rgba(24,32,56,.12);
+  --display:"Chiron GoRound TC","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --num:"Fredoka","Chiron GoRound TC",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --board:#1c2029;--hole:rgba(0,0,0,.5);--card:#272c38;--ink:#eceff7;--muted:#a3aabd;--line:#394052;
+    --accent:#88a3ff;--on-accent:#111a3a;--sign:#f2c52e;--sign-ink:#1b2031;--peg:#5d6474;--stage:#0d0f14;--shadow:rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --board:#1c2029;--hole:rgba(0,0,0,.5);--card:#272c38;--ink:#eceff7;--muted:#a3aabd;--line:#394052;
+  --accent:#88a3ff;--on-accent:#111a3a;--sign:#f2c52e;--sign-ink:#1b2031;--peg:#5d6474;--stage:#0d0f14;--shadow:rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0;color:var(--ink);font-family:var(--body);
+  background-color:var(--board);
+  background-image:radial-gradient(circle,var(--hole) 2.4px,transparent 3px);
+  background-size:26px 26px;background-position:13px 13px;
+  -webkit-tap-highlight-color:transparent;
+}
+body.playing{overflow:hidden}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:22px;
+  padding-block:24px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* the shop sign, hung from two pegs */
+.sign{position:relative;margin-top:8px;padding:22px 22px 18px;border-radius:16px;background:var(--sign);color:var(--sign-ink);box-shadow:0 5px 0 rgba(0,0,0,.14);display:flex;flex-direction:column;gap:6px}
+.sign::before,.sign::after{content:"";position:absolute;top:-8px;width:14px;height:14px;border-radius:50%;background:var(--peg);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.sign::before{left:30px}.sign::after{right:30px}
+.sign h1{margin:0;font-family:var(--display);font-weight:900;font-size:clamp(2rem,7vw,3rem);line-height:1.1;letter-spacing:.06em;text-wrap:balance}
+.sign p{margin:0;font-size:.95rem;line-height:1.65;max-width:44ch}
+.sign .bell{font-family:var(--display);font-weight:700;font-size:.85rem;letter-spacing:.08em}
+
+.tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.chip{appearance:none;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 14px;font:700 .9rem var(--body);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip b{font-family:var(--num);font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.chip[aria-pressed="true"] b{color:var(--sign)}
+.random{appearance:none;border:0;border-radius:999px;background:var(--accent);color:var(--on-accent);padding:9px 18px;font:700 .9rem var(--body);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.random svg{width:16px;height:16px}
+
+#shelves{display:flex;flex-direction:column;gap:30px}
+.shelf{display:flex;flex-direction:column;gap:14px}
+.shelf h2{margin:0;display:flex;align-items:baseline;gap:10px;font-family:var(--display);font-weight:900;font-size:1.35rem;letter-spacing:.06em}
+.shelf h2 span{font-family:var(--body);font-weight:500;font-size:.85rem;color:var(--muted);letter-spacing:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:26px 14px;padding-top:6px}
+
+/* each game is a hang-tab card with a euro-slot hole at the top */
+.card{position:relative;display:flex;flex-direction:column;gap:7px;padding:24px 10px 12px;border-radius:12px;background:var(--card);color:inherit;text-decoration:none;box-shadow:0 2px 0 var(--shadow),0 10px 20px var(--shadow);transition:transform .18s ease}
+.card::before{content:"";position:absolute;top:8px;left:50%;width:32px;height:9px;margin-left:-16px;border-radius:5px;background:var(--board);box-shadow:inset 0 2px 2px rgba(0,0,0,.22)}
+.card::after{content:"";position:absolute;top:-6px;left:50%;width:6px;height:20px;margin-left:-3px;border-radius:3px;background:var(--peg)}
+.card:hover{transform:translateY(-3px) rotate(-.6deg)}
+.card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.new-badge{position:absolute;top:-12px;left:-10px;z-index:2;width:46px;height:46px;transform:rotate(-12deg);pointer-events:none;filter:drop-shadow(0 2px 2px rgba(24,32,56,.3))}
+.thumb{display:block;aspect-ratio:3/4;max-width:100%;border-radius:8px;overflow:hidden;background:var(--line)}
+.thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.name{font-family:var(--display);font-weight:700;font-size:1.05rem;line-height:1.3}
+.desc{font-size:.8rem;line-height:1.5;color:var(--muted);min-height:3em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.best{margin-top:auto;padding-top:7px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:.74rem;color:var(--muted)}
+.best b{font-family:var(--num);font-weight:600;font-size:.95rem;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.best b.none{font-family:var(--body);font-weight:500;font-size:.78rem;color:var(--muted)}
+.last{position:absolute;top:32px;left:16px;z-index:1;padding:2px 9px;border-radius:999px;background:var(--accent);color:var(--on-accent);font-size:.7rem;font-weight:700;letter-spacing:.06em}
+.foot{font-size:.8rem;color:var(--muted);line-height:1.6}
+
+/* player layer */
+.player{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;background:var(--stage);padding-bottom:env(safe-area-inset-bottom,0px)}
+.pbar{display:flex;align-items:center;gap:10px;background:var(--sign);color:var(--sign-ink);
+  padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:8px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.pbar h2{flex:1;min-width:0;margin:0;font-family:var(--display);font-weight:900;font-size:1.05rem;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.pbtn{appearance:none;border:1.5px solid var(--sign-ink);background:transparent;color:var(--sign-ink);border-radius:999px;padding:6px 12px;font:700 .85rem var(--body);cursor:pointer;white-space:nowrap}
+.pbtn.solid{background:var(--sign-ink);color:var(--sign)}
+.screen{position:relative;flex:1;min-height:0}
+.screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:var(--stage)}
+.status{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:12px;color:#c9cfdd;font-size:.95rem;text-align:center;padding:24px}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.pbar button:focus-visible{outline-color:var(--sign-ink)}
+@media (max-width:420px){.pbtn.hide-sm{display:none}}
+
+/* online leaderboard */
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:.74rem;color:var(--muted);min-width:0}
+.top span{flex:none}
+.top b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;color:var(--accent)}
+.top b em{font-style:normal;font-family:var(--num);font-weight:600;color:var(--ink);margin-left:4px}
+.top b.none{font-weight:500;color:var(--muted)}
+.pbtn.rank{background:var(--card);border-color:var(--sign-ink)}
+.rank-panel{position:absolute;top:10px;right:max(12px,env(safe-area-inset-right,0px));z-index:4;width:min(340px,calc(100% - 24px));max-height:calc(100% - 20px);display:flex;flex-direction:column;border-radius:14px;background:var(--card);color:var(--ink);box-shadow:0 18px 40px rgba(0,0,0,.45);overflow:hidden}
+.rank-head{display:flex;align-items:center;gap:8px;padding:12px 12px 10px 16px;background:var(--sign);color:var(--sign-ink)}
+.rank-head h3{flex:1;min-width:0;margin:0;font-family:var(--display);font-weight:900;font-size:1rem;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-close{appearance:none;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--sign-ink);background:transparent;color:var(--sign-ink);font-size:1rem;cursor:pointer;display:grid;place-items:center;padding:0}
+.rank-tabs{display:flex;gap:6px;padding:10px 12px 0}
+.rank-tabs button{appearance:none;flex:1;border:1.5px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:5px 0;font:700 .8rem var(--body);cursor:pointer}
+.rank-tabs button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.rank-list{list-style:none;margin:0;padding:6px 8px 10px;overflow-y:auto}
+.rank-list li{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;align-items:baseline;gap:8px;padding:7px 8px;border-radius:8px;font-size:.9rem}
+.rank-list li:nth-child(odd){background:color-mix(in srgb,var(--line) 30%,transparent)}
+.rank-list li.me{outline:2px solid var(--accent);outline-offset:-2px}
+.rank-list .no{font-family:var(--num);font-weight:600;color:var(--muted);text-align:right}
+.rank-list li:nth-child(-n+3) .no{color:var(--accent)}
+.rank-list .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.rank-list .sc{font-family:var(--num);font-weight:600;font-variant-numeric:tabular-nums}
+.rank-note{padding:14px 16px 18px;font-size:.86rem;color:var(--muted);line-height:1.6}
+.rank-me{padding:8px 16px 12px;border-top:1px dashed var(--line);font-size:.8rem;color:var(--muted)}
+.dialog-back{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(10,14,24,.55)}
+.dialog{width:min(360px,100%);padding:18px;border-radius:16px;background:var(--card);color:var(--ink);box-shadow:0 20px 50px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:12px}
+.dialog h3{margin:0;font-family:var(--display);font-weight:900;font-size:1.15rem}
+.dialog p{margin:0;font-size:.88rem;color:var(--muted);line-height:1.6}
+.name-row{display:flex;gap:8px}
+.name-row input{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:10px;background:var(--board);color:var(--ink);font:700 1rem var(--body);padding:9px 12px}
+.name-row input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.dice{appearance:none;flex:none;width:42px;border:1.5px solid var(--line);border-radius:10px;background:transparent;color:var(--ink);cursor:pointer;font-size:.85rem;font-weight:700}
+.dialog .err{min-height:1.2em;color:#d9534f;font-size:.82rem}
+.dialog-actions{display:flex;gap:8px;justify-content:flex-end}
+.dialog-actions button{appearance:none;border-radius:999px;padding:9px 18px;font:700 .9rem var(--body);cursor:pointer}
+.btn-ghost{border:1.5px solid var(--line);background:transparent;color:var(--ink)}
+.btn-main{border:0;background:var(--accent);color:var(--on-accent)}
+/* 排行榜頁（#rank/<gameId>） */
+body.ranking{overflow:hidden}
+.card .top{cursor:pointer}
+.card .top:hover b{text-decoration:underline}
+.rankpage{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;background-color:var(--board);background-image:radial-gradient(circle,var(--hole) 2.4px,transparent 3px);background-size:26px 26px;background-position:13px 13px}
+.rp-body{flex:1;min-height:0;overflow-y:auto;width:min(560px,100%);margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:14px max(16px,env(safe-area-inset-left,0px)) calc(24px + env(safe-area-inset-bottom,0px))}
+.rp-tabs{display:flex;align-items:center;gap:6px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
+.rp-tabs::-webkit-scrollbar{display:none}
+.rp-cat{flex:none;margin-left:6px;font-size:.72rem;font-weight:700;letter-spacing:.1em;color:var(--muted)}
+.rp-cat:first-child{margin-left:0}
+.rp-tabs .chip{flex:none;padding:5px 11px;font-size:.84rem}
+.rp-card{flex:none;border-radius:14px;background:var(--card);color:var(--ink);box-shadow:0 4px 0 var(--shadow);overflow:hidden}
+.rp-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:14px 16px 4px}
+.rp-head h3{margin:0;font-family:var(--display);font-weight:900;font-size:1.15rem}
+.rp-head small{font-family:var(--num);font-size:.78rem;color:var(--muted);white-space:nowrap}
+.rp-card .rank-tabs{padding:8px 12px 0}
+@media (min-width:640px){.rp-tabs{flex-wrap:wrap;overflow:visible}.rp-cat{flex-basis:100%;margin:6px 0 0}.rp-cat:first-child{margin-top:0}}
+.random.alt{background:var(--card);color:var(--ink);border:3px solid var(--ink);font-weight:900}
+.dialog.all{width:min(440px,100%);max-height:calc(100% - 32px);gap:10px}
+.all-head{display:flex;align-items:center;justify-content:space-between}
+.all-head button{appearance:none;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;padding:0}
+.dialog.all .rank-tabs{padding:0}
+.all-list{min-height:0;overflow-y:auto;display:flex;flex-direction:column;margin:0 -6px}
+.all-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 6px;border-radius:8px;color:inherit;text-decoration:none}
+.all-row:nth-child(odd){background:color-mix(in srgb,var(--line) 30%,transparent)}
+.all-row.me{outline:2px solid var(--accent);outline-offset:-2px}
+.all-tag{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;border:1.5px solid var(--line);color:var(--muted)}
+.all-name{min-width:0;display:flex;flex-direction:column;line-height:1.3;font-weight:700;font-size:.92rem}
+.all-name small{font-weight:500;font-size:.76rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.all-score{font-family:var(--num);font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.all-score.none{font-family:var(--body);font-weight:500;font-size:.8rem;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 14px));z-index:70;transform:translateX(-50%);max-width:calc(100% - 32px);padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--card);font-size:.88rem;font-weight:700;box-shadow:0 10px 24px rgba(0,0,0,.3)}
+/* 最新動態：各遊戲第一名的即時變化 */
+.feed{border-radius:14px;background:var(--card);box-shadow:0 4px 0 var(--shadow);padding:12px 12px 10px}
+.feed h2{margin:0 4px 6px;font-family:var(--display);font-weight:900;font-size:1.1rem;letter-spacing:.06em}
+.feed-list{list-style:none;margin:0;padding:0}
+.feed-list a{display:grid;grid-template-columns:4.6em minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 6px;border-radius:8px;color:inherit;text-decoration:none}
+.feed-list li:nth-child(odd) a{background:color-mix(in srgb,var(--line) 30%,transparent)}
+.feed-list li.me a{outline:2px solid var(--accent);outline-offset:-2px}
+.feed-list li.fresh a{animation:feed-in 2.4s ease-out}
+@keyframes feed-in{from{background:color-mix(in srgb,var(--sign) 70%,transparent)}to{background:transparent}}
+.feed time{font-family:var(--num);font-size:.78rem;color:var(--muted);white-space:nowrap}
+.fd-text{min-width:0;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fd-text .g{font-weight:700;color:var(--accent)}
+.fd-text .beat{color:var(--muted)}
+.fd-score{font-family:var(--num);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fd-new{margin-right:6px;padding:0 7px;border-radius:999px;background:var(--sign);color:var(--sign-ink);font-size:.7rem;font-weight:900}
+.feed-note{margin:0;padding:6px;font-size:.86rem;color:var(--muted)}
+@media (max-width:520px){.feed-list li:nth-child(n+5){display:none}.feed-list a{grid-template-columns:3.8em minmax(0,1fr) auto;gap:8px}}
+@media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}.feed-list li.fresh a{animation:none}}
+</style>
+
+<div class="wrap" id="lobby">
+  <header class="sign">
+    <span class="bell">噹——噹——噹——</span>
+    <h1>下課十分鐘</h1>
+    <p><span id="game-count">16</span> 款小遊戲掛在這面牆上，挑一款就開玩，玩到上課鐘響。手機用手指，電腦用鍵盤或滑鼠。</p>
+  </header>
+
+  <div class="tools">
+    <div class="chips" id="chips" role="group" aria-label="依類型篩選"></div>
+    <button 
+      class="random alt" id="all-btn" type="button">
+      <svg width="800px" height="800px" viewBox="0 0 1024 1024" class="icon" style="vertical-align: middle;fill: #000000;overflow: hidden;" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M459.7248 816.4352h149.3504c-26.368-26.624-71.8336-82.688-0.9728-169.472-24.5248 4.7104-50.4832 11.4176-77.0048 11.4176-28.7232 0-56.32-7.168-82.688-12.6976 39.5264 37.1712 83.3536 94.5664 11.3152 170.752z" fill="#FFAC48" /><path d="M545.6384 661.6064s-33.5872 74.3424-0.3584 147.968c48.384 1.536 63.1296 3.1232 63.1296 3.1232s-82.9952-52.2752-7.7312-160.7168c-23.4496-4.352-55.04 9.6256-55.04 9.6256z" fill="#FC992D" /><path d="M774.7584 192.9216H287.8976c-22.0672 0-39.936-17.8688-39.936-39.936V145.92c0-22.0672 17.8688-39.936 39.936-39.936h486.8608c22.0672 0 39.936 17.8688 39.936 39.936v7.0656c0 22.016-17.8688 39.936-39.936 39.936z" fill="#FFAC48" /><path d="M740.3008 114.2272s28.4672 13.3632 28.4672 32.8192-5.2224 30.5152-34.56 33.6896c34.56 0 70.8608 6.656 71.7312-31.9488s-48.2304-34.56-65.6384-34.56z" fill="#FC992D" /><path d="M551.4752 658.2784H522.24c-124.8768 0-226.048-101.2224-226.048-226.048V207.6672c0-3.4304 2.7648-6.2464 6.2464-6.2464h468.9408c3.4304 0 6.2464 2.7648 6.2464 6.2464v224.512c-0.1024 124.8768-101.2736 226.0992-226.1504 226.0992z" fill="#F2C336" /><path d="M721.408 192.5632v199.0656c0 44.1344-19.3536 233.1648-223.8464 260.3008 90.624 0 235.4688-15.5136 279.6544-214.5792 3.8912-185.1392-3.5328-244.4288-3.5328-244.4288l-52.2752-0.3584z" fill="#E8A200" /><path d="M266.496 504.1152c-132.6592-15.616-134.5536-90.3168-134.5536-119.8592V309.6064c0-4.6592 3.8912-8.3968 8.6528-8.3968h94.8736V234.2912H161.6384c-42.7008 0-77.4656 33.792-77.4656 75.3152v74.7008c0 111.9744 74.752 179.456 210.4832 190.1056 0.9216 0.0512 1.8944 0.1024 2.816 0.1024 9.8304 0 8.9088-7.2192 5.4272-15.36-14.6944-17.408-26.6752-34.2528-36.4032-55.04z" fill="#FFAC48" /><path d="M198.8096 235.9296v54.016s-56.064-4.6592-67.3792-4.6592-34.2528-0.3072-34.2528 28.16V390.144c0 9.5744-0.8704 90.624 87.4496 128.6656 24.9856 9.8816 50.2784 13.056 50.2784 13.056l20.992 37.8368 27.4944-3.8912-30.6176-51.5072s-120.064-28.672-127.0272-101.0688c-6.9632-72.448 5.0176-109.6192 5.0176-109.6192l95.6416-1.536 4.2496-63.5392-31.8464-2.6112z" fill="#FC992D" /><path d="M894.72 234.5984h-79.2064v66.8672h100.2496c4.7616 0 8.6528 3.7888 8.6528 8.3968v74.7008c0 29.5936-0.0512 106.4448-132.864 122.0096-9.728 20.736-22.0672 39.9872-36.7616 57.344a34.67264 34.67264 0 0 0 25.1392 10.8544c0.9216 0 1.8432 0 2.816-0.1024 112.128-13.4144 189.44-78.1312 189.44-190.1056V309.9136c0-41.5232-34.7648-75.3152-77.4656-75.3152z" fill="#FFAC48" /><path d="M912.2816 241.4592c-25.2928-3.7888-40.3968 1.4336-40.3968 1.4336S936.96 264.0896 936.96 314.624v87.1424c0 13.3632-8.448 66.2528-41.8304 90.624-31.0272 22.6816-65.3312 41.0624-124.0064 49.8176-5.0688 7.4752-10.4448 14.7968-16.3328 21.7088 3.0208 3.1744 6.656 5.7856 10.7008 7.6288l65.4336-6.5024c3.7888-1.0752 7.5776-2.2528 11.264-3.4816 23.7568-14.2336 127.4368-81.2544 123.8016-165.632-4.0448-95.232-1.1264-144.3328-53.7088-154.4704z" fill="#FC992D" /><path d="M725.9648 921.6512H331.6224v-63.4368a40.192 40.192 0 0 1 40.192-40.192h313.9584a40.192 40.192 0 0 1 40.192 40.192v63.4368z" fill="#8F93FB" /><path d="M638.976 825.1904s44.6464 7.936 44.6464 34.2016v52.8896h38.144v-81.152l-82.7904-5.9392z" fill="#787CF5" /><path d="M55.9616 389.4272c8.4992 0 15.36-6.8608 15.36-15.36V363.008c0-8.4992-6.8608-15.36-15.36-15.36s-15.36 6.8608-15.36 15.36v11.0592c0 8.448 6.8608 15.36 15.36 15.36z" fill="#333333" /><path d="M886.1184 219.2384h-93.2352v-8.5504c0-1.8432-0.2048-3.584-0.4608-5.376 21.8112-7.424 37.632-28.0576 37.632-52.3776v-7.0656c0-30.5152-24.832-55.296-55.296-55.296H448.8192c-8.4992 0-15.36 6.8608-15.36 15.36s6.8608 15.36 15.36 15.36h325.888c13.568 0 24.576 11.008 24.576 24.576v7.0656c0 13.568-11.0592 24.576-24.576 24.576h-9.216c-2.048-0.4096-4.1472-0.6144-6.3488-0.6144H262.4c-2.1504 0-4.3008 0.2048-6.3488 0.6144h-14.2848c-13.568 0-24.576-11.008-24.576-24.576v-7.0656c0-13.568 11.0592-24.576 24.576-24.576H371.2c8.4992 0 15.36-6.8608 15.36-15.36s-6.8608-15.36-15.36-15.36H241.7664c-30.5152 0-55.296 24.832-55.296 55.296v7.0656c0 26.0608 18.176 47.9232 42.4448 53.76-0.1536 1.28-0.256 2.6112-0.256 3.9424v8.2432H133.376c-51.2 0-92.8256 40.6528-92.8256 90.6752 0 8.4992 6.8608 15.36 15.36 15.36s15.36-6.8608 15.36-15.36c0-33.0752 27.8528-59.9552 62.1056-59.9552H218.112v36.1472H133.376c-13.2608 0-24.0128 10.6496-24.0128 23.7568v74.7008c0 29.1328 0 116.5824 137.8816 136.1408 5.0688 10.0352 10.752 19.712 17.0496 29.0304 1.9456 3.2256 3.9424 6.4512 6.0416 9.5744-0.8704 0.0512-1.7408 0.1024-2.6624 0-78.9504-6.1952-176.6912-35.7376-193.792-141.4656a15.33952 15.33952 0 0 0-17.6128-12.6976 15.34976 15.34976 0 0 0-12.6976 17.6128c15.8208 97.8944 94.5664 157.2864 221.696 167.2192a49.54112 49.54112 0 0 0 24.8832-4.5056c28.5184 33.1264 65.3824 58.8288 107.3664 73.7792 0.5632 0.6144 1.1776 1.1776 1.8432 1.6896 25.5488 19.2512 55.04 45.1072 55.8592 74.6496 0.6144 20.8384-13.1072 43.4688-40.6016 67.328H335.5648c-30.6176 0-55.552 24.9344-55.552 55.552 0 8.4992 6.8608 15.36 15.36 15.36s15.36-6.8608 15.36-15.36c0-13.6704 11.1104-24.832 24.832-24.832h350.208c13.6704 0 24.832 11.1104 24.832 24.832v48.0768h-399.872v-5.9904c0-8.4992-6.8608-15.36-15.36-15.36s-15.36 6.8608-15.36 15.36v21.3504c0 8.4992 6.8608 15.36 15.36 15.36h430.5408c8.4992 0 15.36-6.8608 15.36-15.36V858.112c0-30.6176-24.9344-55.552-55.552-55.552H616.448c-19.5072-16.0256-38.912-35.7888-40.1408-61.7984-1.1264-23.808 13.312-50.5856 43.008-79.5648 0.3072-0.3072 0.512-0.6144 0.8192-0.9728a254.22336 254.22336 0 0 0 110.5408-74.24 50.08896 50.08896 0 0 0 23.552 3.8912c142.7968-11.1616 224.6656-86.0672 224.6656-205.4144V309.9136c0.0512-50.0224-41.5744-90.6752-92.7744-90.6752zM140.0832 384.3072V316.5184h88.576v103.5264c0 23.4496 3.2768 46.1312 9.2672 67.7376-97.792-18.5856-97.8432-75.3152-97.8432-103.4752z m405.6064 358.0416c1.1264 24.1664 12.3904 43.8272 24.8832 58.7264H459.264c18.3296-22.1184 27.2384-44.4416 26.624-66.6112-0.6656-23.808-12.1344-44.3904-27.5456-62.0032 7.8848 0.768 15.872 1.1776 23.9616 1.1776h57.088c10.3424 0 20.48-0.7168 30.5152-1.8944-17.2032 24.1152-25.2928 47.7696-24.2176 70.6048z m-6.3488-99.4304H482.2528c-69.7856 0-132.1472-32.256-173.056-82.6368-0.512-2.304-1.536-4.5568-3.1744-6.4512a246.4512 246.4512 0 0 1-16.4864-22.016 221.21984 221.21984 0 0 1-30.1568-111.7184v-209.408c0-1.024 0.512-1.8432 1.28-2.4064h500.224c0.768 0.5632 1.28 1.3824 1.28 2.4064v209.408c0 30.72-6.2464 60.0064-17.5616 86.6816-8.6016 16.9472-18.9952 32.8704-31.1808 47.3088-2.2528 2.7136-3.4304 5.9392-3.584 9.2672-40.8576 48.5888-102.144 79.5648-170.496 79.5648z m408.8832-258.3552c0 131.7888-106.752 167.7824-196.352 174.7968h-0.8192a253.0304 253.0304 0 0 0 20.2752-37.1712c0.256-0.512 0.512-0.9728 0.768-1.4336 138.0352-19.5584 138.0352-107.0592 138.0352-136.192v-5.7344c0-8.4992-6.8608-15.36-15.36-15.36s-15.36 6.8608-15.36 15.36v5.7344c0 28.0064-0.0512 84.0704-95.744 103.0656a253.952 253.952 0 0 0 9.216-67.584V316.8256h86.528v13.824c0 8.4992 6.8608 15.36 15.36 15.36s15.36-6.8608 15.36-15.36v-20.7872c0-13.1072-10.752-23.7568-24.0128-23.7568h-84.8896v-36.1472h84.8896c34.2528 0 62.1056 26.88 62.1056 59.9552v74.6496z" fill="#333333" /><path d="M536.8832 305.7664l22.6304 44.5952c1.7408 3.3792 5.0688 5.7344 8.9088 6.2976l50.5856 7.168c9.6768 1.3824 13.568 12.9536 6.5536 19.6096l-36.608 34.7136c-2.7648 2.6624-4.0448 6.4512-3.3792 10.1888l8.6528 48.9984c1.6384 9.3696-8.4992 16.5376-17.152 12.1344l-45.2608-23.1424c-3.4304-1.7408-7.5776-1.7408-11.008 0l-45.2608 23.1424c-8.6528 4.4544-18.7904-2.7136-17.152-12.1344l8.6528-48.9984c0.6656-3.7376-0.6144-7.5264-3.3792-10.1888l-36.608-34.7136c-7.0144-6.656-3.1232-18.2272 6.5536-19.6096l50.5856-7.168c3.84-0.5632 7.168-2.9184 8.9088-6.2976l22.6304-44.5952c4.3008-8.5504 16.8448-8.5504 21.1456 0z" fill="#FF6339" /><path d="M613.6832 363.776c-0.0512 0-0.1024-0.0512-0.1536-0.0512l-40.6528-18.8928c-3.84-0.5632-7.168-2.9184-8.9088-6.2976l-22.3744-12.7488-24.8832-25.7024c-2.6624 0.9728 0.2048 0.9216-1.2288 3.7376l-10.496 22.784c4.1472 7.0656 7.7312 14.08 10.496 19.5072 4.1472 8.0896 17.9712 21.4528 35.072 22.3744 17.1008 0.8704 26.5216 1.9968 26.5216 1.9968s-20.3776 17.1008-24.9856 22.1184c-4.608 5.0176-12.6976 15.36-9.8816 30.6688 2.8672 15.36 8.7552 52.3776 8.7552 52.3776l19.5072 12.288 9.4208-88.9344 33.792-35.2256z" fill="#F94A21" /><path d="M574.208 512c-4.608 0-9.216-1.0752-13.5168-3.2768l-52.8896-27.0336-52.8896 27.0336c-10.0864 5.12-21.9648 4.1472-31.0784-2.56-8.8576-6.5536-13.2096-17.3056-11.3152-28.1088l10.0352-56.7808a15.4112 15.4112 0 0 1 0.1536-20.992 15.36 15.36 0 0 1 21.7088-0.5632c7.0144 6.656 10.24 16.3328 8.5504 25.8048l-9.6256 54.528 50.944-26.0608c8.448-4.3008 18.5344-4.3008 26.9824 0l50.944 26.0608-9.6256-54.528c-1.6896-9.472 1.536-19.1488 8.5504-25.8048l40.3456-38.2464-56.1664-7.936a29.31712 29.31712 0 0 1-22.0672-15.6672l-25.4976-50.2784L482.2528 337.92a29.31712 29.31712 0 0 1-22.0672 15.6672l-56.064 7.936 6.5536 5.888a15.32928 15.32928 0 0 1 1.0752 21.7088 15.32928 15.32928 0 0 1-21.7088 1.0752l-9.8304-8.8576c-8.3456-7.936-11.3152-19.2512-7.936-29.7984 3.4304-10.7008 12.544-18.3296 23.808-19.968l59.0336-8.3456L481.4336 271.36a29.27104 29.27104 0 0 1 26.2144-15.9744c11.1616 0 21.1968 6.144 26.2144 15.9744l26.3168 51.8656 59.0336 8.3456c11.264 1.5872 20.3776 9.216 23.808 19.968 3.3792 10.5472 0.4608 21.8624-7.68 29.5424l-42.4448 40.2432 9.984 56.7296c1.8944 10.752-2.4064 21.5552-11.3152 28.1088-5.0688 3.84-11.2128 5.8368-17.3568 5.8368z" fill="#333333" /><path d="M327.936 434.8928a12.8 12.8 0 0 1-12.8-12.8v-13.568a12.8 12.8 0 0 1 25.6 0v13.568c0 7.0656-5.6832 12.8-12.8 12.8zM327.936 375.1424a12.8 12.8 0 0 1-12.8-12.8V267.1616a12.8 12.8 0 0 1 25.6 0v95.1808c0 7.0656-5.6832 12.8-12.8 12.8zM462.3872 872.2944h-49.3568a12.8 12.8 0 0 1 0-25.6h49.3568a12.8 12.8 0 0 1 0 25.6zM373.0432 872.2944h-7.3728a12.8 12.8 0 0 1 0-25.6h7.3728a12.8 12.8 0 0 1 0 25.6zM481.2288 162.1504H353.0752a12.8 12.8 0 0 1 0-25.6h128.1536a12.8 12.8 0 0 1 0 25.6zM313.088 162.1504h-7.3728a12.8 12.8 0 0 1 0-25.6h7.3728a12.8 12.8 0 0 1 0 25.6z" fill="#FFFFFF" /><path d="M461.6704 392.192c-6.144 0-11.52-4.4032-12.5952-10.6496-1.1776-6.9632 3.4816-13.568 10.4448-14.7456l8.2944-1.4336c6.9632-1.1776 13.568 3.4816 14.7456 10.4448s-3.4816 13.568-10.4448 14.7456l-8.2944 1.4336c-0.7168 0.1536-1.4336 0.2048-2.1504 0.2048z" fill="#FFFFFF" /></svg>
+      總排行榜
+    </button>
+    <button class="random" id="random" type="button">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="5" cy="5" r="1.3" fill="currentColor"/><circle cx="11" cy="11" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/></svg>
+      隨便玩一款
+    </button>
+  </div>
+
+  <section class="feed" aria-labelledby="feed-title">
+    <h2 id="feed-title">最新動態</h2>
+    <ol class="feed-list" id="feed-list"></ol>
+    <p class="feed-note" id="feed-note">載入中…</p>
+  </section>
+
+  <div id="shelves"></div>
+  <p class="foot">「我的最高」只存在這台裝置的瀏覽器裡；「第一名」是線上排行榜，玩完會自動上傳你的成績。點卡片上的「第一名」可以看完整排行榜，在遊戲裡按右上角的「排行榜」可以看前 20 名。</p>
+</div>
+
+<section class="player" id="player" hidden aria-label="遊戲畫面">
+  <div class="pbar">
+    <button class="pbtn solid" id="back" type="button">← 大廳</button>
+    <h2 id="p-title"></h2>
+    <button class="pbtn hide-sm" id="shuffle" type="button">換一款</button>
+    <button class="pbtn" id="reload" type="button">重玩</button>
+    <button class="pbtn rank" id="rank-btn" type="button" aria-expanded="false" aria-controls="rank-panel">排行榜</button>
+  </div>
+  <div class="screen" id="screen">
+    <div class="status" id="status"></div>
+    <section class="rank-panel" id="rank-panel" hidden aria-label="排行榜">
+      <div class="rank-head"><h3 id="rank-title">排行榜</h3><button class="rank-close" id="rank-close" type="button" aria-label="關閉排行榜">✕</button></div>
+      <div class="rank-tabs" id="rank-tabs" hidden></div>
+      <ol class="rank-list" id="rank-list"></ol>
+      <div class="rank-note" id="rank-note" hidden></div>
+      <div class="rank-me" id="rank-me"></div>
+    </section>
+  </div>
+</section>
+
+<section class="rankpage" id="rankpage" hidden aria-label="排行榜">
+  <div class="pbar">
+    <button class="pbtn solid" id="rp-back" type="button">← 大廳</button>
+    <h2>排行榜</h2>
+  </div>
+  <div class="rp-body">
+    <nav class="rp-tabs" id="rp-tabs" aria-label="選擇遊戲"></nav>
+    <div class="rp-card">
+      <div class="rp-head"><h3 id="rp-title"></h3><small id="rp-sub"></small></div>
+      <div class="rank-tabs" id="rp-levels" hidden></div>
+      <ol class="rank-list" id="rp-list"></ol>
+      <div class="rank-note" id="rp-note" hidden></div>
+      <div class="rank-me" id="rp-me"></div>
+    </div>
+  </div>
+</section>
+<div class="dialog-back" id="name-dialog" hidden>
+  <form class="dialog" id="name-form" aria-labelledby="name-title">
+    <h3 id="name-title">上排行榜要取個名字</h3>
+    <p id="name-desc">之後的成績都會用這個名字上傳，排行榜上大家都看得到。</p>
+    <div class="name-row">
+      <input id="name-input" maxlength="12" autocomplete="nickname" aria-label="排行榜名字">
+      <button class="dice" id="name-dice" type="button" aria-label="換一個隨機名字">換</button>
+    </div>
+    <div class="err" id="name-err" aria-live="polite"></div>
+    <div class="dialog-actions">
+      <button class="btn-ghost" id="name-skip" type="button">先不要</button>
+      <button class="btn-main" type="submit">送出成績</button>
+    </div>
+  </form>
+</div>
+<div class="dialog-back" id="all-dialog" hidden>
+  <div class="dialog all" role="dialog" aria-labelledby="all-title">
+    <div class="all-head"><h3 id="all-title">總排行榜</h3><button id="all-close" type="button" aria-label="關閉">✕</button></div>
+    <div class="rank-tabs" id="all-tabs"></div>
+    <div class="all-list" id="all-list"></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(() => {
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const $ = id => document.getElementById(id);
+
+/* ---------- game registry: one entry per file in games/ ---------- */
+const score = (key, unit) => () => { const v = store.get(key, 0); return v > 0 ? `${v} ${unit}` : null; };
+const GAMES = [
+  { id: 'mahjong2048', title: '麻將 2048', cat: '益智', desc: '滑動合併麻將牌，合出「發財」就是 2048。', best: score('mj2048.best', '分') },
+  { id: 'zodiac',      title: '生肖翻牌',   cat: '益智', desc: '先記住十二生肖的位置，再限時配對。', best: score('zodiac.best', '分') },
+  { id: 'puzzle', new: true,      title: '夜市拼拼樂', cat: '益智', desc: '點兩塊互換位置，拼回夜市插圖，三種格數。', best: score('puzzle.best', '分') },
+  { id: 'mines',       title: '測量踩地雷', cat: '益智', desc: '三種難度，長按插旗，挖開會露出等高線。', best: () => {
+      const b = store.get('mines.best', {}) || {};
+      for (const [k, n] of [['hard', '高級'], ['mid', '中級'], ['easy', '初級']]) if (b[k] != null) return `${n} ${b[k]} 秒`;
+      return null;
+    } },
+  { id: 'bloodlab',    title: '抽血櫃台',   cat: '反應', desc: '四個櫃台照叫號抽血，計量條停在黃區分數最高。', best: score('bloodlab.best', '分') },
+  { id: 'blueprint',   title: '藍圖方塊',   cat: '益智', desc: '排滿一整列就消掉，每消十行升一級。', best: score('blueprint.best', '分') },
+  { id: 'tower',       title: '疊疊塔',     cat: '反應', desc: '點一下放下滑動的樓層，對得越準蓋得越高。', best: score('tower.best', '層') },
+  { id: 'snake',       title: '掌機貪食蛇', cat: '反應', desc: '滑動轉彎，每吃五顆出現限時大餌。', best: score('snake.best', '分') },
+  { id: 'mole',        title: '草皮打地鼠', cat: '反應', desc: '45 秒一局，金色地鼠多給分，炸彈別敲。', best: score('mole.best', '分') },
+  { id: 'piano',       title: '月光鋼琴',   cat: '反應', desc: '只踩黑鍵，每點一下彈出曲子的下一個音。', best: score('piano.best', '個音') },
+  { id: 'boba',        title: '珍珠接接樂', cat: '反應', desc: '拖杯子接珍珠，裝滿一杯換口味，避開辣椒。', best: score('boba.best', '分') },
+  { id: 'goldfish',    title: '夜市撈金魚', cat: '反應', desc: '慢慢滑到金魚底下再撈，紙網泡太久會破。', best: score('goldfish.best', '分') },
+  { id: 'scratch', new: true,     title: '夜市刮刮樂', cat: '反應', desc: '手指刮開九格，三個數字一樣就中獎，一局五張。', best: score('scratch.best', '分') },
+  { id: 'chicken', new: true,     title: '夜市炸雞排', cat: '反應', desc: '三口油鍋顧到金黃再出餐，客人等太久會走掉。', best: score('chicken.best', '分') },
+  { id: 'hop', new: true,         title: '粉筆跳格子', cat: '反應', desc: '下一格在哪邊就點哪邊，時間條歸零就結束。', best: score('hop.best', '格') },
+  { id: 'reflex', new: true,      title: '紅綠燈反應王', cat: '反應', desc: '一變綠燈馬上點，五回合比反應，偷跑 0 分。', best: score('reflex.best', '分') },
+  { id: 'ringtoss',    title: '夜市套圈圈', cat: '動作', desc: '往下拉再放開丟竹圈，整個套住獎品才算。', best: score('ringtoss.best', '分') },
+  { id: 'balloon', new: true,     title: '夜市射氣球', cat: '動作', desc: '點氣球開槍，連擊加倍，金氣球加時間，炸彈別碰。', best: score('balloon.best', '分') },
+  { id: 'claw', new: true,        title: '夜市夾娃娃', cat: '動作', desc: '點一下移動、再點一下下爪，對得越準抓得越牢。', best: score('claw.best', '分') },
+  { id: 'pachinko', new: true,    title: '夜市彈珠台', cat: '動作', desc: '按住蓄力放開發射，彈珠穿過釘陣掉進分數格。', best: score('pachinko.best', '分') },
+  { id: 'bricks',      title: '套色打磚塊', cat: '動作', desc: '孔版印刷風打磚塊，四種道具輪流掉。', best: score('riso.best', '分') },
+  { id: 'stardust',    title: '星塵防線',   cat: '動作', desc: '拖曳移動、自動開火，撐到母艦出現。', best: score('stardust.best', '分') },
+  { id: 'plane',       title: '筆記本紙飛機', cat: '動作', desc: '點一下往上飄，從鉛筆之間的縫鑽過去。', best: score('plane.best', '枝') },
+  { id: 'rooftop',     title: '屋頂貓',     cat: '動作', desc: '黑貓在公寓頂樓間跑酷，空中可以再跳一次。', best: score('roofcat.best', '分') }
+];
+/* NEW 標記：星芒頂點用公式算（外圈、內圈交替），要改尖角數或尖銳度只改 SPIKES / OUTER / INNER */
+const SPIKES = 12, OUTER = 22, INNER = 18.5;
+const STAR = Array.from({ length: SPIKES * 2 }, (_, i) => {
+  const r = i % 2 ? INNER : OUTER, a = Math.PI * i / SPIKES;
+  return (OUTER + r * Math.cos(a)).toFixed(1) + ',' + (OUTER + r * Math.sin(a)).toFixed(1);
+}).join(' ');
+const NEW_BADGE = `<svg class="new-badge" viewBox="0 0 44 44" role="img" aria-label="新遊戲"><title>新遊戲</title>
+  <polygon points="${STAR}" fill="#e23b2e"/>
+  <circle cx="22" cy="22" r="16" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="2 2"/>
+  <text x="22" y="26.5" text-anchor="middle" font-family="Fredoka,sans-serif" font-weight="600" font-size="12" fill="#fff">NEW</text></svg>`;
+const CATS = [
+  { k: '益智', sub: '慢慢想' },
+  { k: '反應', sub: '看準時機' },
+  { k: '動作', sub: '手要快' }
+];
+const byId = Object.fromEntries(GAMES.map(g => [g.id, g]));
+
+/* ---------- lobby ---------- */
+const chipsEl = $('chips'), shelvesEl = $('shelves'), lobby = $('lobby');
+let cat = store.get('lobby.cat', 'all');
+if (cat !== 'all' && !CATS.some(c => c.k === cat)) cat = 'all';
+
+function renderChips() {
+  const items = [{ k: 'all', label: '全部', n: GAMES.length }, ...CATS.map(c => ({ k: c.k, label: c.k, n: GAMES.filter(g => g.cat === c.k).length }))];
+  chipsEl.innerHTML = '';
+  for (const it of items) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.dataset.cat = it.k;
+    b.setAttribute('aria-pressed', String(cat === it.k));
+    b.innerHTML = `${it.label}<b>${it.n}</b>`;
+    b.addEventListener('click', () => { cat = it.k; store.set('lobby.cat', cat); applyFilter(); });
+    chipsEl.appendChild(b);
+  }
+}
+function renderShelves() {
+  shelvesEl.innerHTML = '';
+  for (const c of CATS) {
+    const list = GAMES.filter(g => g.cat === c.k);
+    const sec = document.createElement('section');
+    sec.className = 'shelf'; sec.dataset.cat = c.k;
+    sec.innerHTML = `<h2>${c.k}<span>${list.length} 款・${c.sub}</span></h2><div class="grid"></div>`;
+    const grid = sec.querySelector('.grid');
+    for (const g of list) {
+      const a = document.createElement('a');
+      a.className = 'card'; a.href = '#' + g.id; a.dataset.id = g.id;
+      a.innerHTML = `${g.new ? NEW_BADGE : ''}<span class="thumb"><img src="thumbs/${g.id}.jpg" alt="${g.title}的遊戲畫面" width="300" height="400" loading="lazy" decoding="async"></span>
+        <span class="name">${g.title}</span><span class="desc">${g.desc}</span>
+        <span class="top"><span>第一名</span><b class="none">載入中…</b></span>
+        <span class="best"><span>我的最高</span><b></b></span><span class="last" hidden>上次玩</span>`;
+      a.addEventListener('click', e => { e.preventDefault(); go(g.id); });
+      grid.appendChild(a);
+    }
+    shelvesEl.appendChild(sec);
+  }
+}
+function applyFilter() {
+  chipsEl.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cat === cat)));
+  shelvesEl.querySelectorAll('.shelf').forEach(s => { s.hidden = cat !== 'all' && s.dataset.cat !== cat; });
+}
+function refreshCards() {
+  const last = store.get('lobby.last', null);
+  shelvesEl.querySelectorAll('.card').forEach(a => {
+    const g = byId[a.dataset.id], v = g.best(), b = a.querySelector('.best b');
+    b.textContent = v || '還沒玩過';
+    b.classList.toggle('none', !v);
+    a.querySelector('.last').hidden = a.dataset.id !== last;
+  });
+}
+
+/* ---------- player: each game runs in its own iframe ---------- */
+const player = $('player'), screenEl = $('screen'), statusEl = $('status'), pTitle = $('p-title');
+let frame = null, current = null, token = 0, loadTimer = 0;
+
+function unmount() {
+  token++; clearTimeout(loadTimer);
+  if (frame) { frame.remove(); frame = null; }   // removing the iframe stops its loops, listeners and audio
+  current = null;
+}
+async function mount(g) {
+  unmount();
+  const my = token;
+  current = g.id;
+  pTitle.textContent = g.title;
+  player.hidden = false; document.body.classList.add('playing'); lobby.inert = true;
+  statusEl.textContent = '載入中…'; statusEl.hidden = false;
+  store.set('lobby.last', g.id);
+
+  const f = document.createElement('iframe');
+  f.title = g.title;
+  f.setAttribute('allow', 'autoplay; fullscreen');
+  f.addEventListener('load', () => {
+    if (my !== token) return;
+    clearTimeout(loadTimer); statusEl.hidden = true;
+    try { f.contentWindow.focus(); } catch (e) {}
+  });
+  const url = 'games/' + g.id + '.html';
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(res.status);
+    const html = await res.text();
+    if (my !== token) return;
+    f.srcdoc = html;              // same-origin document: shares localStorage with the lobby
+  } catch (e) {
+    if (my !== token) return;
+    f.src = url;                  // fallback, e.g. when opened straight from disk
+  }
+  loadTimer = setTimeout(() => {
+    if (my !== token) return;
+    statusEl.textContent = '這款遊戲載入不了。按「重玩」再試一次，或回大廳換一款。';
+  }, 10000);
+  screenEl.appendChild(f); frame = f;
+}
+function close() {
+  const was = current;
+  unmount();
+  player.hidden = true; document.body.classList.remove('playing'); lobby.inert = false;
+  refreshCards();
+  if (was) { const card = shelvesEl.querySelector(`.card[data-id="${was}"]`); if (card) try { card.focus({ preventScroll: true }); } catch (e) {} }
+}
+
+/* ---------- routing on #id so a game can be linked directly ---------- */
+function route() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  const g = byId[id];
+  if (g) { if (current !== g.id) mount(g); }
+  else if (!player.hidden) close();
+}
+function go(id) {
+  const want = id ? '#' + id : '';
+  if (location.hash !== want) { try { location.hash = id; } catch (e) {} }
+  route();
+}
+function pickRandom() {
+  const last = store.get('lobby.last', null);
+  const pool = GAMES.filter(g => g.id !== current && g.id !== last && (cat === 'all' || g.cat === cat || current));
+  const list = pool.length ? pool : GAMES;
+  return list[Math.floor(Math.random() * list.length)].id;
+}
+
+$('back').addEventListener('click', () => go(''));
+$('reload').addEventListener('click', () => { if (current) mount(byId[current]); });
+$('shuffle').addEventListener('click', () => go(pickRandom()));
+$('random').addEventListener('click', () => go(pickRandom()));
+addEventListener('hashchange', route);
+addEventListener('storage', e => { if (e.key && e.key.endsWith('.best')) refreshCards(); });
+
+$('game-count').textContent = GAMES.length;
+renderChips(); renderShelves(); applyFilter(); refreshCards(); route();
+})();
+</script>
+
+<script type="module">
+/* ---------- 線上排行榜：卡片上的第一名、遊戲裡的前 20 名、上傳成績 ---------- */
+import { submitScore, getBoard, cleanName, isMock, watchFeed, logPlay } from './leaderboard.js';
+
+const $ = id => document.getElementById(id);
+const local = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+const UNIT = { hop: '格', tower: '層', piano: '音', plane: '枝', 'mines-easy': '秒', 'mines-mid': '秒', 'mines-hard': '秒' };
+const MINES = [['mines-easy', '初級'], ['mines-mid', '中級'], ['mines-hard', '高級']];
+const isAsc = g => g.startsWith('mines-');
+const better = (g, a, b) => (isAsc(g) ? a < b : a > b);
+const boardOf = id => (id === 'mines' ? 'mines-easy' : id);     // 踩地雷的卡片顯示初級第一名
+const fmt = (g, v) => `${Number(v).toLocaleString()} ${UNIT[g] || '分'}`;
+
+/* ---------- 提示訊息 ---------- */
+let toastT = 0;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2800);
+}
+
+/* ---------- 第一次上榜時取名字 ---------- */
+const ADJ = ['勇敢的', '快手', '愛吃的', '夜市', '神準', '想睡的', '下課的', '認真的'];
+const NOUN = ['金魚', '護理師', '竹圈', '紙飛機', '黑貓', '鋼琴手', '地鼠', '珍珠'];
+const randomName = () => ADJ[Math.random() * ADJ.length | 0] + NOUN[Math.random() * NOUN.length | 0];
+function askName() {
+  return new Promise(resolve => {
+    const back = $('name-dialog'), input = $('name-input'), err = $('name-err'), form = $('name-form');
+    input.value = randomName(); err.textContent = ''; back.hidden = false;
+    setTimeout(() => { input.focus(); input.select(); }, 30);
+    const done = v => { back.hidden = true; form.onsubmit = null; $('name-skip').onclick = null; $('name-dice').onclick = null; resolve(v); };
+    $('name-dice').onclick = () => { input.value = randomName(); input.focus(); };
+    $('name-skip').onclick = () => done(null);
+    form.onsubmit = e => {
+      e.preventDefault();
+      const r = cleanName(input.value);
+      if (r.error) { err.textContent = r.error; return; }
+      done(r.name);
+    };
+  });
+}
+let asking = null;
+async function getName() {
+  const saved = local.get('arcade.name');
+  if (saved) return saved;
+  if (!asking) asking = askName().then(v => { asking = null; if (v) local.set('arcade.name', v); return v; });
+  return asking;
+}
+
+/* ---------- 卡片上的第一名（快取 1 分鐘，省 Firestore 讀取次數） ---------- */
+const TTL = 1 * 60e3;
+const readTops = () => { try { return JSON.parse(sessionStorage.getItem('arcade.tops')) || {}; } catch (e) { return {}; } };
+const saveTops = t => { try { sessionStorage.setItem('arcade.tops', JSON.stringify(t)); } catch (e) {} };
+function paintTop(id, entry, failed) {
+  const row = document.querySelector(`.card[data-id="${id}"] .top`);
+  if (!row) return;
+  const b = row.querySelector('b'), g = boardOf(id);
+  if (id === 'mines') row.firstElementChild.textContent = '初級第一';
+  if (failed) { b.className = 'none'; b.textContent = '暫時連不上'; return; }
+  if (!entry) { b.className = 'none'; b.textContent = '還沒人上榜'; return; }
+  b.className = ''; b.textContent = entry.name;
+  const em = document.createElement('em'); em.textContent = fmt(g, entry.score); b.append(em);
+  b.title = `${entry.name} ${fmt(g, entry.score)}`;
+}
+async function topOf(g, cache, now) {              // 先看快取，過期才查 Firestore
+  const c = cache[g];
+  if (c && now - c.at < TTL) return c.top;
+  const [top] = await getBoard(g, 1);
+  cache[g] = { top: top || null, at: now };
+  return top || null;
+}
+async function loadTops() {
+  const cache = readTops(), now = Date.now();
+  const ids = [...document.querySelectorAll('.card[data-id]')].map(c => c.dataset.id);
+  await Promise.all(ids.map(async id => {
+    try { paintTop(id, await topOf(boardOf(id), cache, now)); }
+    catch (e) { paintTop(id, null, true); }
+  }));
+  saveTops(cache);
+}
+
+/* ---------- 遊戲結束：收到分數就上傳 ---------- */
+addEventListener('message', async e => {
+  const frame = document.querySelector('#screen iframe');
+  if (!frame || e.source !== frame.contentWindow) return;          // 只收目前這款遊戲傳的
+  const d = e.data;
+  if (!d || d.type !== 'arcade:score' || typeof d.game !== 'string' || !Number.isInteger(d.score)) return;
+  if (!isAsc(d.game) && d.score <= 0) { logPlay(d.game, local.get('arcade.name'), d.score); return; }
+  const name = await getName();
+  logPlay(d.game, name, d.score);                                  // 每局都記到後台，略過取名就記成匿名
+  if (!name) { toast('這次先不上傳，下次玩完會再問你'); return; }
+  try {
+    const r = await submitScore(d.game, name, d.score);
+    if (!r.improved) { toast(`沒超過你的最佳 ${fmt(d.game, r.best)}`); return; }
+    toast(`已上傳排行榜：${name} ${fmt(d.game, d.score)}`);
+    const cache = readTops(), c = cache[d.game];
+    if (c && (!c.top || better(d.game, d.score, c.top.score))) { c.top = { name, score: d.score }; saveTops(cache); }
+    boardCache.clear();
+    if (!$('rank-panel').hidden && panelUI.g === d.game) showBoard(d.game);
+    if (rpOpen && rp.ui.g === d.game) showBoard(d.game, rp.ui, RP_N);
+  } catch (err) {
+    console.warn('排行榜上傳失敗', err);
+    toast('排行榜暫時連不上，這次沒上傳成功');
+  }
+});
+
+/* ---------- 遊戲右上角的前 20 名 ---------- */
+function currentGameId() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  return id && document.querySelector(`.card[data-id="${CSS.escape(id)}"]`) ? id : null;
+}
+const panelUI = { list: $('rank-list'), note: $('rank-note'), me: $('rank-me'), g: null };
+const boardCache = new Map();                                   // 榜單快取 3 分鐘；自己上傳成績後會清掉
+async function boardRows(g, n) {
+  const k = g + ':' + n, c = boardCache.get(k);
+  if (c && Date.now() - c.at < TTL) return c.rows;
+  const rows = await getBoard(g, n);
+  boardCache.set(k, { rows, at: Date.now() });
+  return rows;
+}
+async function showBoard(g, ui = panelUI, n = 20) {             // ui：遊戲內面板或排行榜頁各自的容器
+  ui.g = g;
+  const me = local.get('arcade.name');
+  ui.list.innerHTML = ''; ui.note.hidden = false; ui.note.textContent = '載入中…'; ui.me.textContent = '';
+  try {
+    const rows = await boardRows(g, n);
+    if (ui.g !== g) return;
+    ui.note.hidden = rows.length > 0;
+    if (!rows.length) ui.note.textContent = '還沒有人上榜，玩一局搶第一名！';
+    rows.forEach((r, i) => {
+      const li = document.createElement('li');
+      if (r.name === me) li.className = 'me';
+      for (const [cls, text] of [['no', i + 1], ['nm', r.name], ['sc', fmt(g, r.score)]]) {
+        const sp = document.createElement('span'); sp.className = cls; sp.textContent = text; li.append(sp);
+      }
+      ui.list.append(li);
+    });
+    const mine = rows.findIndex(r => r.name === me);
+    ui.me.textContent = !me ? '玩完一局就能取名字上榜'
+      : mine >= 0 ? `你是第 ${mine + 1} 名（${me}）` : `你的名字是「${me}」，還沒進前 ${n} 名`;
+    if (isMock) ui.me.textContent += '・目前是本機測試資料';
+  } catch (e) {
+    if (ui.g !== g) return;
+    ui.note.hidden = false; ui.note.textContent = '排行榜暫時連不上，稍後再試。';
+  }
+}
+function openRank() {
+  const id = currentGameId();
+  if (!id) return;
+  $('rank-title').textContent = `${document.querySelector(`.card[data-id="${id}"] .name`).textContent}・前 20 名`;
+  const tabs = $('rank-tabs');
+  if (id === 'mines') {
+    let lv = 'easy'; try { lv = JSON.parse(local.get('mines.lv')) || 'easy'; } catch (e) {}
+    const start = MINES.some(([g]) => g === 'mines-' + lv) ? 'mines-' + lv : 'mines-easy';
+    tabs.innerHTML = '';
+    for (const [g, label] of MINES) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = label; b.setAttribute('aria-pressed', String(g === start));
+      b.onclick = () => { tabs.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); showBoard(g); };
+      tabs.append(b);
+    }
+    tabs.hidden = false; showBoard(start);
+  } else { tabs.hidden = true; showBoard(id); }
+  $('rank-panel').hidden = false; $('rank-btn').setAttribute('aria-expanded', 'true');
+}
+function closeRank() { $('rank-panel').hidden = true; $('rank-btn').setAttribute('aria-expanded', 'false'); panelUI.g = null; }
+$('rank-btn').addEventListener('click', () => ($('rank-panel').hidden ? openRank() : closeRank()));
+$('rank-close').addEventListener('click', closeRank);
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('rank-panel').hidden) closeRank(); });
+addEventListener('hashchange', () => { closeRank(); syncRankPage(); if (!currentGameId()) loadTops(); });
+
+/* ---------- 總排行榜：所有遊戲的第一名，依類型分組，點一列看該款完整排行榜 ---------- */
+const allDialog = $('all-dialog'), allList = $('all-list'), allTabs = $('all-tabs');
+function openAll() {
+  const me = local.get('arcade.name'), rows = [], cats = ['全部'];
+  document.querySelectorAll('.shelf').forEach(sh => {
+    cats.push(sh.dataset.cat);
+    sh.querySelectorAll('.card').forEach(a => {
+      const id = a.dataset.id, title = a.querySelector('.name').textContent;
+      if (id === 'mines') MINES.forEach(([g, lv]) => rows.push({ g, id, cat: sh.dataset.cat, title: `${title}・${lv}` }));
+      else rows.push({ g: id, id, cat: sh.dataset.cat, title });
+    });
+  });
+  const filter = cat => {
+    allTabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.textContent === cat)));
+    allList.querySelectorAll('.all-row').forEach(r => { r.hidden = cat !== '全部' && r.dataset.cat !== cat; });
+  };
+  allTabs.innerHTML = '';
+  for (const c of cats) { const b = document.createElement('button'); b.type = 'button'; b.textContent = c; b.onclick = () => filter(c); allTabs.append(b); }
+  allList.innerHTML = '';
+  const cache = readTops(), now = Date.now();
+  Promise.all(rows.map(async r => {
+    const el = document.createElement('a');
+    el.className = 'all-row'; el.href = '#rank/' + r.g; el.dataset.cat = r.cat;
+    el.innerHTML = '<span class="all-tag"></span><span class="all-name"><span></span><small>載入中…</small></span><span class="all-score none">—</span>';
+    el.querySelector('.all-tag').textContent = r.cat;
+    el.querySelector('.all-name span').textContent = r.title;
+    allList.append(el);
+    const small = el.querySelector('small'), score = el.querySelector('.all-score');
+    try {
+      const top = await topOf(r.g, cache, now);
+      if (!top) { small.textContent = '還沒人上榜'; return; }
+      small.textContent = '第一名 ' + top.name; score.textContent = fmt(r.g, top.score); score.classList.remove('none');
+      el.classList.toggle('me', top.name === me);
+    } catch (e) { small.textContent = '暫時連不上'; }
+  })).then(() => saveTops(cache));
+  filter('全部'); allDialog.hidden = false;
+}
+const closeAll = () => { allDialog.hidden = true; };
+$('all-btn').addEventListener('click', openAll);
+$('all-close').addEventListener('click', closeAll);
+allDialog.addEventListener('click', e => { if (e.target === allDialog || e.target.closest('.all-row')) closeAll(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !allDialog.hidden) closeAll(); });
+
+/* ---------- 排行榜頁：#rank/<遊戲 id 或 mines-easy|mid|hard>，上面用遊戲當標籤 ---------- */
+const rp = { page: $('rankpage'), tabs: $('rp-tabs'), levels: $('rp-levels'), title: $('rp-title'), sub: $('rp-sub'),
+  ui: { list: $('rp-list'), note: $('rp-note'), me: $('rp-me'), g: null } };
+const RP_N = 50;
+let rpOpen = false;
+const minesLevel = () => { const v = local.get('arcade.rank.mines'); return MINES.some(([b]) => b === v) ? v : 'mines-easy'; };
+function rpGo(board) { history.replaceState(null, '', '#rank/' + board); syncRankPage(); }   // 切標籤不新增瀏覽紀錄，「上一頁」一次就回大廳
+function buildRankTabs() {
+  rp.tabs.innerHTML = '';
+  document.querySelectorAll('.shelf').forEach(sh => {
+    const cat = document.createElement('span'); cat.className = 'rp-cat'; cat.textContent = sh.dataset.cat; rp.tabs.append(cat);
+    sh.querySelectorAll('.card').forEach(a => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.dataset.id = a.dataset.id; b.textContent = a.querySelector('.name').textContent;
+      b.onclick = () => rpGo(a.dataset.id === 'mines' ? minesLevel() : a.dataset.id);
+      rp.tabs.append(b);
+    });
+  });
+}
+function syncRankPage() {
+  const m = decodeURIComponent(location.hash).match(/^#rank(?:\/(.*))?$/);
+  if (!m) {
+    if (rpOpen) { rpOpen = false; rp.page.hidden = true; document.body.classList.remove('ranking'); $('lobby').inert = !$('player').hidden; }
+    return;
+  }
+  if (!rpOpen) {
+    rpOpen = true; rp.page.hidden = false; document.body.classList.add('ranking'); $('lobby').inert = true;
+    if (!rp.tabs.children.length) buildRankTabs();
+  }
+  const cards = [...document.querySelectorAll('.card')];
+  let board = m[1] || local.get('arcade.rank') || '', gid = board.startsWith('mines-') ? 'mines' : board;
+  if (!cards.some(c => c.dataset.id === gid)) gid = cards[0].dataset.id;            // 網址亂打就退回第一款
+  if (gid === 'mines') { if (!MINES.some(([b]) => b === board)) board = minesLevel(); local.set('arcade.rank.mines', board); }
+  else board = gid;
+  local.set('arcade.rank', board);
+  if (location.hash !== '#rank/' + board) history.replaceState(null, '', '#rank/' + board);
+
+  const card = cards.find(c => c.dataset.id === gid), title = card.querySelector('.name').textContent;
+  rp.tabs.querySelectorAll('.chip').forEach(b => {
+    const on = b.dataset.id === gid; b.setAttribute('aria-pressed', String(on));
+    if (on) b.scrollIntoView({ inline: 'center', block: 'nearest' });
+  });
+  rp.levels.hidden = gid !== 'mines';
+  if (gid === 'mines') {
+    rp.levels.innerHTML = '';
+    for (const [b, label] of MINES) {
+      const x = document.createElement('button');
+      x.type = 'button'; x.textContent = label; x.setAttribute('aria-pressed', String(b === board)); x.onclick = () => rpGo(b);
+      rp.levels.append(x);
+    }
+  }
+  rp.title.textContent = gid === 'mines' ? `${title}・${MINES.find(([b]) => b === board)[1]}` : title;
+  rp.sub.textContent = `${card.closest('.shelf').dataset.cat} · ${board} · 前 ${RP_N} 名`;
+  showBoard(board, rp.ui, RP_N);
+}
+$('rp-back').addEventListener('click', () => { location.hash = ''; });
+addEventListener('keydown', e => { if (e.key === 'Escape' && rpOpen && $('all-dialog').hidden && $('name-dialog').hidden) location.hash = ''; });
+document.addEventListener('click', e => {                         // 大廳卡片上的「第一名」→ 該款排行榜頁
+  const t = e.target.closest('.card .top'); if (!t) return;
+  e.preventDefault(); e.stopPropagation();
+  location.hash = '#rank/' + boardOf(t.closest('.card').dataset.id);
+}, true);
+
+/* ---------- 最新動態：監看每個榜的第一名，有人刷新就插到最上面 ---------- */
+const feed = [];
+function rel(at) {
+  if (!at) return '';
+  const m = Math.floor((Date.now() - at) / 60e3);
+  if (m < 1) return '剛剛';
+  if (m < 60) return `${m} 分鐘前`;
+  if (m < 1440) return `${Math.floor(m / 60)} 小時前`;
+  if (m < 10080) return `${Math.floor(m / 1440)} 天前`;
+  const d = new Date(at); return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+function renderFeed() {
+  const list = $('feed-list'), me = local.get('arcade.name');
+  list.innerHTML = ''; $('feed-note').hidden = feed.length > 0;
+  for (const it of feed) {
+    const li = document.createElement('li'), a = document.createElement('a');
+    li.className = (it.fresh ? 'fresh ' : '') + (it.name === me ? 'me' : '');
+    a.href = '#rank/' + it.b;
+    a.innerHTML = '<time></time><span class="fd-text"><span class="fd-new">新</span><b></b><span class="v"></span><span class="g"></span>第一名<span class="beat"></span></span><span class="fd-score"></span>';
+    const q = s => a.querySelector(s);                              // 玩家名字一律用 textContent 放
+    q('time').textContent = rel(it.at);
+    q('.fd-new').hidden = !it.isNew;
+    q('b').textContent = it.name;
+    q('.v').textContent = it.isNew ? ' 刷新' : ' 拿下';
+    q('.g').textContent = `《${it.t}》`;
+    q('.beat').textContent = it.prev ? `，打敗 ${it.prev}` : '';
+    q('.fd-score').textContent = fmt(it.b, it.score);
+    li.append(a); list.append(li);
+  }
+}
+function feedFail(e) { console.warn('最新動態連不上', e); $('feed-note').hidden = false; $('feed-note').textContent = '動態暫時連不上，重新整理再試一次'; }
+if (isMock) $('feed-note').textContent = '本機測試模式沒有即時動態';
+else {
+  const titleOf = id => document.querySelector(`.card[data-id="${id.split('-')[0]}"] .name`)?.textContent ?? id;
+  watchFeed(list => {
+    feed.length = 0;
+    list.forEach(x => feed.push({ b: x.game, t: titleOf(x.game), name: x.name, score: x.score,
+                                  prev: x.prev, at: x.at, isNew: Date.now() - x.at < 60e3 }));
+    $('feed-note').textContent = '還沒有人刷新第一名，玩一局搶第一名！';
+    renderFeed();
+  }, feedFail).catch(feedFail);
+}
+
+syncRankPage();
+loadTops();
+</script>
+
+</html>
