@@ -106,6 +106,25 @@ export async function watchFeed(cb, onErr) {
   })), onErr);
 }
 
+// 最新消息：news 集合，一個版本一筆，最新的排前面。只能在 Firebase 後台編輯
+const MOCK_NEWS = [
+  { version: '1.3', date: '2026-11-14', items: [
+    { tag: 'new',  group: '夜市夾娃娃', game: 'claw', text: '升級成 3D 機台，搖桿移動、按鈕下爪，急停可以「甩爪」把娃娃撥到洞口。' },
+    { tag: 'fix',  group: '大廳', text: '最新動態改為保存在線上，重新整理後「打敗 xxx」不會消失。' } ] },
+  { version: '1.2', date: '2026-11-12', items: [
+    { tag: 'new',  group: '新遊戲', game: 'pachinko', text: '夜市彈珠台：用拉的發射，底部八個凹槽計分，大當たり期間分數 ×3。' },
+    { tag: 'tune', group: '跳格子', game: 'hop', text: '前期速度調慢，比較容易上手。' } ] }
+];
+export async function getNews(n = 20) {
+  if (isMock) return MOCK_NEWS.slice(0, n);
+  const { F, db } = await firestore();
+  const q = F.query(F.collection(db, 'news'), F.orderBy('date', 'desc'), F.limit(n));
+  return (await F.getDocs(q)).docs.map(d => {
+    const x = d.data(), t = x.date?.toDate?.() ?? new Date(x.date);
+    return { version: x.version || d.id, date: t.toLocaleDateString('sv-SE'), items: x.items || [] };   // sv-SE = 本地時區的 YYYY-MM-DD
+  });
+}
+
 // 前 n 名：[{ name, score }]
 export async function getBoard(game, n = 20) {
   if (isMock) {

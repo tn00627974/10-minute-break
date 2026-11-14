@@ -1,0 +1,57 @@
+[
+  {
+    "version": "0.1",
+    "date": "2026-11-05",
+    "items": [
+      { "tag": "new", "group": "大廳", "text": "下課十分鐘大廳上線，共 13 款遊戲：麻將 2048、生肖翻牌、測量踩地雷、藍圖方塊、珍奶、打磚塊、打地鼠、月光鋼琴、紙飛機、頂樓、貪食蛇、星塵、疊疊塔" },
+      { "tag": "new", "group": "月光鋼琴", "game": "piano", "text": "內建曲目增加到 20 首，依童謠、節日、名曲分組，也可以自己加一首曲子" }
+    ]
+  },
+  {
+    "version": "0.2",
+    "date": "2026-11-08",
+    "items": [
+      { "tag": "new", "group": "新遊戲", "game": "goldfish", "text": "夜市撈金魚" },
+      { "tag": "new", "group": "新遊戲", "game": "ringtoss", "text": "夜市套圈圈" },
+      { "tag": "new", "group": "新遊戲", "game": "bloodlab", "text": "抽血櫃台" },
+      { "tag": "new", "group": "線上排行榜", "text": "卡片顯示各遊戲第一名，遊戲中右上角可看前 20 名，踩地雷分初、中、高級三個榜" },
+      { "tag": "new", "group": "總排行榜", "text": "一次看所有遊戲的第一名，可用益智、反應、動作篩選" },
+      { "tag": "tune", "group": "月光鋼琴", "game": "piano", "text": "彈奏鍵、重來、音效的按鍵可以自訂" },
+      { "tag": "fix", "group": "打磚塊", "game": "bricks", "text": "移除畫面上的疊影，磚塊改為灰色漸層加黑框" }
+    ]
+  },
+  {
+    "version": "0.3",
+    "date": "2026-11-11",
+    "items": [
+      { "tag": "new", "group": "新遊戲", "game": "balloon", "text": "夜市射氣球" },
+      { "tag": "new", "group": "新遊戲", "game": "puzzle", "text": "夜市拼拼樂" },
+      { "tag": "new", "group": "新遊戲", "game": "scratch", "text": "夜市刮刮樂" },
+      { "tag": "new", "group": "獨立排行榜頁", "text": "點卡片上的「第一名」，可切換各遊戲看前 50 名" },
+      { "tag": "new", "group": "大廳", "text": "「最新動態」：即時顯示誰刷新了第一名、打敗了誰" },
+      { "tag": "new", "group": "大廳", "text": "新遊戲卡片左上角加上 NEW 標記" }
+    ]
+  },
+  {
+    "version": "0.3.1",
+    "date": "2026-11-11",
+    "items": [
+      { "tag": "new", "group": "夜市夾娃娃", "game": "claw", "text": "用搖桿移動、按鈕下爪，一局 8 枚代幣" },
+      { "tag": "new", "group": "夜市彈珠台", "game": "pachinko", "text": "蓄力發射彈珠，穿過釘陣落入分數格" },
+      { "tag": "new", "group": "炸雞排", "game": "chicken", "text": "同時顧三口油鍋，炸到剛好就出餐，客人走掉 3 次就收攤" },
+      { "tag": "new", "group": "跳格子", "game": "hop", "text": "左右點擊往上跳，時間條歸零就結束" },
+      { "tag": "new", "group": "紅綠燈反應王", "game": "reflex", "text": "看到綠燈立刻按，共五回合，偷跑 0 分" }
+    ]
+  },
+  {
+    "version": "0.4",
+    "date": "2026-11-14",
+    "items": [
+      { "tag": "tune", "group": "夜市夾娃娃", "game": "claw", "text": "改為 3D 機台，用搖桿移動、按鈕下爪，可以「甩爪」把娃娃盪到洞口" },
+      { "tag": "tune", "group": "夜市彈珠台", "game": "pachinko", "text": "改為 3D，往下拉發射，拉越長力道越大；一局 40 顆，加入入賞口與風車" },
+      { "tag": "tune", "group": "夜市彈珠台", "game": "pachinko", "text": "底部改為八個凹槽計分，中大獎時 12 秒內分數 ×3" },
+      { "tag": "tune", "group": "最新動態", "text": "改為線上保存，重新整理後「打敗 xxx」不會消失" },
+      { "tag": "fix", "group": "月光鋼琴", "game": "piano", "text": "修正結束時分數會送出兩次的問題" }
+    ]
+  }
+]
