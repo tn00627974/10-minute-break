@@ -346,7 +346,7 @@ const score = (key, unit) => () => { const v = store.get(key, 0); return v > 0 ?
 const GAMES = [
   { id: 'mahjong2048', title: '麻將 2048', cat: '益智', desc: '滑動合併麻將牌，合出「發財」就是 2048。', best: score('mj2048.best', '分') },
   { id: 'zodiac',      title: '生肖翻牌',   cat: '益智', desc: '先記住十二生肖的位置，再限時配對。', best: score('zodiac.best', '分') },
-  { id: 'puzzle', new: true,      title: '夜市拼拼樂', cat: '益智', desc: '點兩塊互換位置，拼回夜市插圖，三種格數。', best: score('puzzle.best', '分') },
+  { id: 'puzzle', badge: 'new', since: '2026-11-11', title: '夜市拼拼樂', cat: '益智', desc: '點兩塊互換位置，拼回夜市插圖，三種格數。', best: score('puzzle.best', '分') },
   { id: 'mines',       title: '測量踩地雷', cat: '益智', desc: '三種難度，長按插旗，挖開會露出等高線。', best: () => {
       const b = store.get('mines.best', {}) || {};
       for (const [k, n] of [['hard', '高級'], ['mid', '中級'], ['easy', '初級']]) if (b[k] != null) return `${n} ${b[k]} 秒`;
@@ -360,29 +360,36 @@ const GAMES = [
   { id: 'piano',       title: '月光鋼琴',   cat: '反應', desc: '只踩黑鍵，每點一下彈出曲子的下一個音。', best: score('piano.best', '個音') },
   { id: 'boba',        title: '珍珠接接樂', cat: '反應', desc: '拖杯子接珍珠，裝滿一杯換口味，避開辣椒。', best: score('boba.best', '分') },
   { id: 'goldfish',    title: '夜市撈金魚', cat: '反應', desc: '慢慢滑到金魚底下再撈，紙網泡太久會破。', best: score('goldfish.best', '分') },
-  { id: 'scratch', new: true,     title: '夜市刮刮樂', cat: '反應', desc: '手指刮開九格，三個數字一樣就中獎，一局五張。', best: score('scratch.best', '分') },
-  { id: 'chicken', new: true,     title: '夜市炸雞排', cat: '反應', desc: '三口油鍋顧到金黃再出餐，客人等太久會走掉。', best: score('chicken.best', '分') },
-  { id: 'hop', new: true,         title: '粉筆跳格子', cat: '反應', desc: '下一格在哪邊就點哪邊，時間條歸零就結束。', best: score('hop.best', '格') },
-  { id: 'reflex', new: true,      title: '紅綠燈反應王', cat: '反應', desc: '一變綠燈馬上點，五回合比反應，偷跑 0 分。', best: score('reflex.best', '分') },
+  { id: 'scratch', badge: 'new', since: '2026-11-11', title: '夜市刮刮樂', cat: '反應', desc: '手指刮開九格，三個數字一樣就中獎，一局五張。', best: score('scratch.best', '分') },
+  { id: 'chicken', badge: 'up', since: '2026-11-15', title: '夜市炸雞排', cat: '反應', desc: '3D 雞排攤，兩面炸到金黃，照點單切、撒粉、加辣再出餐。', best: score('chicken.best', '元') },
+  { id: 'hop', badge: 'up', since: '2026-11-15', title: '粉筆跳格子', cat: '反應', desc: '3D 跳格子，看清左右、跳過石頭、撿糖果和星星。', best: score('hop.best', '格') },
+  { id: 'reflex', badge: 'new', since: '2026-11-11', title: '紅綠燈反應王', cat: '反應', desc: '一變綠燈馬上點，五回合比反應，偷跑 0 分。', best: score('reflex.best', '分') },
   { id: 'ringtoss',    title: '夜市套圈圈', cat: '動作', desc: '往下拉再放開丟竹圈，整個套住獎品才算。', best: score('ringtoss.best', '分') },
-  { id: 'balloon', new: true,     title: '夜市射氣球', cat: '動作', desc: '點氣球開槍，連擊加倍，金氣球加時間，炸彈別碰。', best: score('balloon.best', '分') },
-  { id: 'claw', new: true,        title: '夜市夾娃娃', cat: '動作', desc: '點一下移動、再點一下下爪，對得越準抓得越牢。', best: score('claw.best', '分') },
-  { id: 'pachinko', new: true,    title: '夜市彈珠台', cat: '動作', desc: '按住蓄力放開發射，彈珠穿過釘陣掉進分數格。', best: score('pachinko.best', '分') },
-  { id: 'bricks',      title: '套色打磚塊', cat: '動作', desc: '孔版印刷風打磚塊，四種道具輪流掉。', best: score('riso.best', '分') },
+  { id: 'balloon', badge: 'new', since: '2026-11-11', title: '夜市射氣球', cat: '動作', desc: '點氣球開槍，連擊加倍，金氣球加時間，炸彈別碰。', best: score('balloon.best', '分') },
+  { id: 'claw', badge: 'up', since: '2026-11-14', title: '夜市夾娃娃', cat: '動作', desc: '點一下移動、再點一下下爪，對得越準抓得越牢。', best: score('claw.best', '分') },
+  { id: 'pachinko', badge: 'up', since: '2026-11-13', title: '夜市彈珠台', cat: '動作', desc: '按住蓄力放開發射，彈珠穿過釘陣掉進分數格。', best: score('pachinko.best', '分') },
+  { id: 'bricks', badge: 'up', since: '2026-11-15', title: '套色打磚塊', cat: '動作', desc: '打磚塊加特殊磚與印刷機 Boss，七種道具輪流掉。', best: score('riso.best', '分') },
   { id: 'stardust',    title: '星塵防線',   cat: '動作', desc: '拖曳移動、自動開火，撐到母艦出現。', best: score('stardust.best', '分') },
   { id: 'plane',       title: '筆記本紙飛機', cat: '動作', desc: '點一下往上飄，從鉛筆之間的縫鑽過去。', best: score('plane.best', '枝') },
   { id: 'rooftop',     title: '屋頂貓',     cat: '動作', desc: '黑貓在公寓頂樓間跑酷，空中可以再跳一次。', best: score('roofcat.best', '分') }
 ];
-/* NEW 標記：星芒頂點用公式算（外圈、內圈交替），要改尖角數或尖銳度只改 SPIKES / OUTER / INNER */
+/* 卡片左上角標記：badge 'new' 新遊戲（紅）、'up' 改版（藍）；since 起算 BADGE_DAYS 天後自動消失
+   星芒頂點用公式算（外圈、內圈交替），要改尖角數或尖銳度只改 SPIKES / OUTER / INNER */
 const SPIKES = 12, OUTER = 22, INNER = 18.5;
 const STAR = Array.from({ length: SPIKES * 2 }, (_, i) => {
   const r = i % 2 ? INNER : OUTER, a = Math.PI * i / SPIKES;
   return (OUTER + r * Math.cos(a)).toFixed(1) + ',' + (OUTER + r * Math.sin(a)).toFixed(1);
 }).join(' ');
-const NEW_BADGE = `<svg class="new-badge" viewBox="0 0 44 44" role="img" aria-label="新遊戲"><title>新遊戲</title>
-  <polygon points="${STAR}" fill="#e23b2e"/>
+const BADGE_DAYS = 14;
+const BADGES = { new: { color: '#e23b2e', text: 'NEW', size: 12, label: '新遊戲' }, up: { color: '#2b6fd8', text: 'UP', size: 14, label: '改版' } };
+function badgeOf(g) {
+  const b = BADGES[g.badge]; if (!b) return '';
+  if (g.since && (Date.now() - new Date(g.since + 'T00:00:00+08:00')) / 864e5 >= BADGE_DAYS) return '';   // 過期就不顯示
+  return `<svg class="new-badge" viewBox="0 0 44 44" role="img" aria-label="${b.label}"><title>${b.label}</title>
+  <polygon points="${STAR}" fill="${b.color}"/>
   <circle cx="22" cy="22" r="16" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="2 2"/>
-  <text x="22" y="26.5" text-anchor="middle" font-family="Fredoka,sans-serif" font-weight="600" font-size="12" fill="#fff">NEW</text></svg>`;
+  <text x="22" y="${b.size > 12 ? 27 : 26.5}" text-anchor="middle" font-family="Fredoka,sans-serif" font-weight="600" font-size="${b.size}" fill="#fff">${b.text}</text></svg>`;
+}
 const CATS = [
   { k: '益智', sub: '慢慢想' },
   { k: '反應', sub: '看準時機' },
@@ -418,7 +425,7 @@ function renderShelves() {
     for (const g of list) {
       const a = document.createElement('a');
       a.className = 'card'; a.href = '#' + g.id; a.dataset.id = g.id;
-      a.innerHTML = `${g.new ? NEW_BADGE : ''}<span class="thumb"><img src="thumbs/${g.id}.jpg" alt="${g.title}的遊戲畫面" width="300" height="400" loading="lazy" decoding="async"></span>
+      a.innerHTML = `${badgeOf(g)}<span class="thumb"><img src="thumbs/${g.id}.jpg" alt="${g.title}的遊戲畫面" width="300" height="400" loading="lazy" decoding="async"></span>
         <span class="name">${g.title}</span><span class="desc">${g.desc}</span>
         <span class="top"><span>第一名</span><b class="none">載入中…</b></span>
         <span class="best"><span>我的最高</span><b></b></span><span class="last" hidden>上次玩</span>`;

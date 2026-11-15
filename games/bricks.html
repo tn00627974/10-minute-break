@@ -62,13 +62,33 @@ body{
 .chip.p{background:var(--pink)}
 .chip.y{background:var(--yellow);color:var(--ink)}
 .chip.k{background:var(--ink)}
+.chip.ky{background:var(--ink);color:var(--yellow)}.chip.by{background:var(--blue);color:var(--yellow)}.chip.py{background:var(--pink);color:var(--yellow)}
+.legend h3{grid-column:1/-1;margin:4px 0 0;font-size:.78rem;color:#5d5b62;letter-spacing:.1em}
 .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:2px}
 .btn{appearance:none;border:2px solid var(--ink);background:var(--blue);color:var(--paper);font:900 1rem var(--body);padding:9px 18px;cursor:pointer;letter-spacing:.06em}
 .btn:active{transform:translate(1px,1px)}
 .keys{font-size:.76rem;color:#5d5b62}
 .rec{color:var(--pink);font-weight:900}
 button:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
-@media (max-width:380px){.legend{grid-template-columns:1fr}}
+/* 遊戲中的介面：Boss 血條、道具倒數、連擊、發球提示（單色油墨，不疊色） */
+.bossbar{position:absolute;left:14px;right:14px;top:14px;display:flex;align-items:center;gap:8px;color:var(--ink);font-weight:900;font-size:.78rem;pointer-events:none}
+.bossbar .hp{flex:1;height:10px;border:2px solid var(--ink);background:var(--paper)}
+.bossbar .hp i{display:block;height:100%;background:var(--pink);transition:width .15s}
+.bossbar b{font-family:var(--display);font-weight:400;font-size:.7rem;min-width:4.5em;text-align:right}
+.effects{position:absolute;left:10px;bottom:24px;display:flex;flex-direction:column-reverse;gap:4px;pointer-events:none}
+.fx{display:flex;align-items:center;gap:5px;font-size:.7rem;font-weight:900;color:var(--ink)}
+.fx .chip{width:26px;height:16px;font-size:.66rem}
+.fx .bar{width:44px;height:4px;background:rgba(30,29,31,.15)}
+.fx .bar i{display:block;height:100%;background:var(--ink)}
+.fx.bad .chip{background:var(--ink);color:var(--paper)}.fx.bad{color:#b0002e}
+.combo{position:absolute;right:12px;top:44px;text-align:right;color:var(--ink);font-weight:900;font-size:.72rem;letter-spacing:.1em;pointer-events:none}
+.combo b{display:block;font-family:var(--display);font-weight:400;font-size:1.3rem;color:var(--pink);letter-spacing:0}
+.launch{position:absolute;left:50%;transform:translateX(-50%);bottom:84px;padding:4px 12px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);font-weight:900;font-size:.8rem;pointer-events:none;animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{50%{opacity:.35}}
+.overlay{max-height:calc(100% - 24px);overflow:auto}
+.legend{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px 10px;font-size:.76rem}
+.legend .chip{width:26px;height:16px;font-size:.66rem}
+@media (max-width:420px){.legend{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){
   .pop.show{animation:fade 1.1s}
   @keyframes fade{0%,100%{opacity:0}15%,75%{opacity:1}}
@@ -89,14 +109,27 @@ button:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
 <main class="stage" id="stage">
   <canvas id="cv"></canvas>
   <div class="pop" id="pop" aria-live="polite"></div>
+  <div class="bossbar" id="bossbar" hidden><span>印刷機</span><div class="hp"><i id="bosshp"></i></div><b id="bossnum"></b></div>
+  <div class="effects" id="effects"></div>
+  <div class="combo" id="combo" hidden>連擊<b id="combonum">0</b></div>
+  <div class="launch" id="launch" hidden>點一下發球</div>
   <section class="overlay" id="overlay">
     <h1 id="ov-title">套色打磚塊</h1>
-    <p id="ov-text">拖曳或移動滑鼠控制底下的板子，放開手指、點一下或按空白鍵發球。深色磚要打兩到三下才會碎掉。</p>
+    <p id="ov-text">拖曳或移動滑鼠控制底下的板子，放開手指、點一下或按空白鍵發球。深色磚要打兩到三下，鋼磚只能用穿透或爆炸打掉；每 5 關會出現印刷機 Boss。</p>
     <div class="legend" id="legend">
+      <h3>特殊磚</h3>
+      <div><span class="chip p">爆</span>炸掉周圍</div>
+      <div><span class="chip k">鋼</span>打不破</div>
+      <div><span class="chip y">印</span>必掉道具</div>
+      <div><span class="chip b">移</span>左右移動</div>
+      <h3>道具</h3>
       <div><span class="chip b">寬</span>板子變寬</div>
-      <div><span class="chip p">多</span>球分裂成三顆</div>
-      <div><span class="chip y">慢</span>球速變慢</div>
-      <div><span class="chip k">命</span>多一次機會</div>
+      <div><span class="chip p">多</span>球變三顆</div>
+      <div><span class="chip y">慢</span>球變慢</div>
+      <div><span class="chip k">命</span>多一條命</div>
+      <div><span class="chip ky">穿</span>穿透磚塊</div>
+      <div><span class="chip by">黏</span>黏住再發</div>
+      <div><span class="chip py">射</span>發射墨滴</div>
     </div>
     <div class="row"><button class="btn" id="ov-btn">開始印刷</button><span class="keys" id="ov-keys">← → 移動・P 暫停</span></div>
   </section>
@@ -116,7 +149,7 @@ const muteBtn = $('mute'), pauseBtn = $('pause');
 
 const W = 400;
 let H = 640, S = 1, DPR = 1;
-const paddle = { x: W / 2, y: 586, w: 78, h: 12, target: W / 2, wideT: 0, squash: 0 };
+const paddle = { x: W / 2, y: 586, w: 78, h: 12, target: W / 2, wideT: 0, squash: 0, stickyT: 0, inkT: 0 };
 function fit() {
   const r = stage.getBoundingClientRect();
   if (!r.width || !r.height) return;
@@ -147,9 +180,18 @@ muteBtn.addEventListener('click', () => { setMute(!muted); muteBtn.blur(); if (!
 
 /* ---------- inks & sheet ---------- */
 const INK = { pink: '#ff48b0', blue: '#0078bf', yellow: '#ffe800', black: '#1e1d1f', paper: '#f0efe9' };
-//const ROWINK = [['pink', 'blue'], ['yellow', 'pink'], ['blue', 'yellow']]; // [main ink, misregistered ink]
-// 磚塊顏色：每一塊都是同一款灰色漸層（上淺下深）加 1px 黑框；加固磚（hp>=2）用同樣做法但更深，上面的白點表示還要打幾下
-const GRAY = [214, 166], DARK = [74, 40];
+// 磚塊顏色：每一排一個低彩度顏色（上淺下深）加淡黑框；加固磚（hp>=2）用同色系深色，上面的白點表示還要打幾下
+/* 磚塊配色：低彩度，每一排一個顏色；硬磚用同色系的深色 */
+const PALETTES = {
+  morandi: ['#c9a9a6', '#d6c39a', '#a8bba3', '#9fb3c4', '#b5a8c4', '#d1b29b', '#a9c1bd', '#c4b4a0'],
+  retro:   ['#d9967f', '#dfba6c', '#9fb68c', '#82a5ba', '#bb8ea3', '#cfa47f', '#8fb5a8', '#c79a8c'],
+  cool:    ['#9cc0c4', '#a3b9d6', '#b0c9b0', '#c2b8d9', '#a9cfc0', '#b9c6d9', '#9fb7c9', '#b7cbbd']
+};
+let PALETTE = PALETTES.morandi;
+const hex = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+const shade = (c, f) => `rgb(${hex(c).map(v => Math.round(f < 0 ? v * (1 + f) : v + (255 - v) * f)).join(',')})`;   // f>0 變亮、f<0 變暗
+const rowColor = br => PALETTE[br.row % PALETTE.length];
+const SOFT = { pink: '#e27da3', yellow: '#e6cd6a', blue: '#5b8fb5', black: '#3b3a40' };   // 特殊磚用柔和一點的油墨色
 const BORDER = 1;                                              // 黑框粗細（往磚塊裡面長，磚塊大小不變）
 const gray = v => `rgb(${v},${v},${v})`;
 const COLS = 8, MARGIN = 14, GAP = 6, BRH = 18, TOP = 58;
@@ -163,18 +205,20 @@ const PATTERNS = [
   (r, c) => !!HEART[r] && HEART[r][c] === '#',
   (r, c) => c % 3 !== 2
 ];
-// const DROPS = {
-//   wide:  { ch: '寬', main: 'blue',   off: 'yellow', text: 'paper', msg: '板子變寬' },
-//   multi: { ch: '多', main: 'pink',   off: 'blue',   text: 'paper', msg: '分裂！' },
-//   slow:  { ch: '慢', main: 'yellow', off: 'pink',   text: 'black', msg: '減速' },
-//   life:  { ch: '命', main: 'black',  off: 'pink',   text: 'paper', msg: '+1 次機會' }
-// };
 const DROPS = {
   wide:  { ch: '寬', main: 'blue',   text: 'paper', msg: '板子變寬' },
   multi: { ch: '多', main: 'pink',   text: 'paper', msg: '分裂！' },
   slow:  { ch: '慢', main: 'yellow', text: 'black', msg: '減速' },
-  life:  { ch: '命', main: 'black',  text: 'paper', msg: '+1 次機會' }
+  life:  { ch: '命', main: 'black',  text: 'paper', msg: '+1 次機會' },
+  pierce:{ ch: '穿', main: 'black',  text: 'yellow', msg: '穿透！' },
+  sticky:{ ch: '黏', main: 'blue',   text: 'yellow', msg: '板子會黏球' },
+  gun:   { ch: '射', main: 'pink',   text: 'yellow', msg: '發射墨滴' }
 };
+const DROP_ODDS = [['wide', .2], ['multi', .2], ['slow', .12], ['life', .06], ['pierce', .14], ['sticky', .14], ['gun', .14]];
+const randDrop = () => { let r = Math.random(); for (const [k, p] of DROP_ODDS) { if ((r -= p) < 0) return k; } return 'wide'; };
+/* 特殊磚：爆＝炸掉周圍、鋼＝打不破、印＝必掉道具、移＝左右移動 */
+const SPECIAL = { bomb: { ch: '爆', ink: 'pink', text: 'paper' }, steel: { ch: '鋼', ink: 'black', text: 'paper' }, gift: { ch: '印', ink: 'yellow', text: 'black' }, move: { ch: '移', ink: 'blue', text: 'paper' } };
+const BOSS_EVERY = 5, PIERCE_T = 6, STICKY_T = 12, GUN_T = 6, INKED_T = 3;
 const grain = (() => {
   const g = document.createElement('canvas'); g.width = g.height = 96;
   const c = g.getContext('2d'), img = c.createImageData(96, 96);
@@ -187,7 +231,7 @@ const grain = (() => {
 })();
 
 /* ---------- state ---------- */
-let balls = [], bricks = [], drops = [], parts = [];
+let balls = [], bricks = [], drops = [], parts = [], shots = [], blobs = [], boss = null, pierceT = 0, gunT = 0, gunCd = 0, clock = 0;
 let state = 'ready', prevState = 'play', level = 1, score = 0, lives = 3, slowT = 0, chain = 0, clearT = 0, overAt = 0, ignoreUp = false;
 let best = store.get('riso.best', 0);
 const held = new Set();
@@ -195,6 +239,8 @@ const held = new Set();
 const baseSpeed = () => Math.min(300 + (level - 1) * 16, 500);
 function newBall() { return { x: paddle.x, y: paddle.y - 7, vx: 0, vy: 0, r: 6, sp: baseSpeed(), stuck: true, off: (Math.random() - .5) * 24 }; }
 function makeLevel(n) {
+  boss = null; shots = []; blobs = [];
+  if (n % BOSS_EVERY === 0) return makeBoss(n);
   const idx = (n - 1) % PATTERNS.length, p = PATTERNS[idx];
   const R = idx === 4 ? 6 : Math.min(4 + Math.floor((n - 1) / 2), 8);
   const hard = Math.min(Math.floor((n - 1) / 2), R - 1);
@@ -203,8 +249,26 @@ function makeLevel(n) {
     if (!p(r, c, R)) continue;
     let hp = r < hard ? 2 : 1;
     if (n >= 6 && r === 0) hp = 3;
-    bricks.push({ x: MARGIN + c * (BW + GAP), y: TOP + r * (BRH + GAP), w: BW, h: BRH, hp, max: hp, row: r, flash: 0 });
+    bricks.push({ x: MARGIN + c * (BW + GAP), y: TOP + r * (BRH + GAP), w: BW, h: BRH, hp, max: hp, row: r, flash: 0, type: null });
   }
+  const plain = () => bricks.filter(b => !b.type && b.hp === 1), mark = (k, type) => {   // 隨機挑普通磚變成特殊磚
+    for (let i = 0; i < k; i++) { const c = plain(); if (!c.length) return; const b = c[Math.random() * c.length | 0]; b.type = type; if (type === 'steel') b.hp = b.max = 1; }
+  };
+  mark(n >= 2 ? Math.min(1 + Math.floor(n / 3), 4) : 0, 'bomb');
+  mark(n >= 3 ? Math.min(1 + Math.floor(n / 3), 5) : 0, 'steel');
+  mark(n >= 4 ? 2 : 1, 'gift');
+  if (n >= 4 && n % 2 === 0) {                                     // 會移動的一排：隔一格放一塊，左右來回一格
+    const y = TOP + R * (BRH + GAP) + 6;
+    for (let c = 0; c < COLS; c += 2) bricks.push({ x: MARGIN + c * (BW + GAP), y, w: BW, h: BRH, hp: 1, max: 1, row: R, flash: 0, type: 'move', baseX: MARGIN + c * (BW + GAP) });
+  }
+}
+/* 每 5 關：印刷機 Boss，會左右移動、往下滴墨；打掉 HP 就過關 */
+function makeBoss(n) {
+  const hp = 30 + n * 4;
+  boss = { x: W / 2 - 90, y: TOP + 8, w: 180, h: 48, hp, max: hp, flash: 0, type: 'boss', row: 0, blobT: 2 };
+  bricks = [boss];
+  for (let c = 0; c < COLS; c++) if (c !== 3 && c !== 4)               // 兩側護衛磚
+    bricks.push({ x: MARGIN + c * (BW + GAP), y: TOP + 80, w: BW, h: BRH, hp: 2, max: 2, row: 1, flash: 0, type: c === 0 || c === 7 ? 'steel' : null });
 }
 function hud() {
   scoreEl.textContent = score;
@@ -214,7 +278,7 @@ function hud() {
 function showPop(text) { pop.textContent = text; pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show'); }
 function resetGame() {
   level = 1; score = 0; lives = 3; slowT = 0; chain = 0; drops = []; parts = [];
-  paddle.wideT = 0; paddle.w = 78;
+  paddle.wideT = 0; paddle.w = 78; paddle.stickyT = 0; paddle.inkT = 0; pierceT = 0; gunT = 0;
   makeLevel(level); balls = [newBall()]; hud();
 }
 function start() {
@@ -225,7 +289,7 @@ function start() {
 function launch() {
   let any = false;
   for (const b of balls) if (b.stuck) {
-    const a = (Math.random() - .5) * .7;
+    const a = b.caught ? Math.max(-1, Math.min(1, b.off / (paddle.w / 2))) * 1.05 : (Math.random() - .5) * .7; b.caught = false;
     b.vx = b.sp * Math.sin(a); b.vy = -b.sp * Math.cos(a); b.stuck = false; any = true;
   }
   if (any) tone(620, .06);
@@ -252,18 +316,18 @@ function gameOver() {
 function loseLife() {
   lives--; hud(); tone(180, .4, 'sawtooth', .05);
   if (lives <= 0) { gameOver(); return; }
-  balls = [newBall()]; drops = []; paddle.wideT = 0; slowT = 0; chain = 0;
+  balls = [newBall()]; drops = []; shots = []; blobs = []; paddle.wideT = 0; paddle.stickyT = 0; paddle.inkT = 0; slowT = 0; pierceT = 0; gunT = 0; chain = 0;
   showPop(`剩下 ${lives} 次機會`);
 }
 function levelClear() {
   state = 'clear'; clearT = 1.6;
-  const bonus = 100 * level; score += bonus; balls = []; drops = []; hud();
+  const bonus = (boss ? 300 : 100) * level; score += bonus; balls = []; drops = []; shots = []; blobs = []; hud();
   showPop(`第 ${level} 關完成 +${bonus}`);
   [523, 659, 784].forEach((f, i) => setTimeout(() => tone(f, .12, 'triangle', .06), i * 110));
 }
 function nextLevel() {
   level++; makeLevel(level); balls = [newBall()]; state = 'play'; slowT = 0; hud();
-  showPop(`第 ${level} 關`);
+  showPop(boss ? `第 ${level} 關：印刷機來了！` : `第 ${level} 關`);
 }
 
 /* ---------- physics ---------- */
@@ -274,28 +338,38 @@ function hitBrick(b) {
   return null;
 }
 function burst(br) {
-  // const [m, o] = ROWINK[br.row % 3];
-  const m = gray(GRAY[0]), o = gray(GRAY[1]);
+  const c = br.type === 'boss' ? '#555555' : rowColor(br), m = shade(c, br.hp >= 2 ? -.3 : 0), o = shade(c, -.2);
   for (let i = 0; i < 10; i++) parts.push({
     x: br.x + Math.random() * br.w, y: br.y + Math.random() * br.h,
     vx: (Math.random() - .5) * 220, vy: -Math.random() * 160 - 20,
     s: 3 + Math.random() * 4, rot: Math.random() * 6, vr: (Math.random() - .5) * 12, life: .8, ink: i % 2 ? m : o
   });
 }
-function damage(br, b) {
-  br.hp--; br.flash = .15; chain++;
-  b.sp = Math.min(b.sp + 2.5, baseSpeed() * 1.35);
-  const m = Math.hypot(b.vx, b.vy) || 1; b.vx *= b.sp / m; b.vy *= b.sp / m;
+function damage(br, b, force = false) {                          // b 是球（射擊、爆炸時為 null）；force＝連鋼磚也打掉
+  if (br.hp <= 0) return;
+  if (br.type === 'steel' && !force) { br.flash = .1; tone(1200, .03, 'square', .02); return; }
+  br.hp -= force && br.type !== 'boss' ? br.hp : 1; br.flash = .15; chain++;
+  if (b) { b.sp = Math.min(b.sp + 2.5, baseSpeed() * 1.35); const m = Math.hypot(b.vx, b.vy) || 1; b.vx *= b.sp / m; b.vy *= b.sp / m; }
+  if (chain >= 10 && chain % 10 === 0) showPop(`連擊 ×${chain}！`);
   if (br.hp <= 0) {
-    score += 10 * br.max + chain * 2; burst(br);
+    score += (br.type === 'boss' ? 0 : 10 * br.max) + chain * 2; burst(br);
     tone(392 + (7 - br.row) * 45, .07, 'square', .035);
-    if (Math.random() < .12 && drops.length < 3) {
-      const r = Math.random();
-      const type = r < .36 ? 'wide' : r < .72 ? 'multi' : r < .92 ? 'slow' : 'life';
-      drops.push({ x: br.x + br.w / 2, y: br.y + br.h / 2, type });
-    }
-  } else { score += 5; tone(160, .05, 'square', .03); }
+    if (br.type === 'bomb') explode(br);
+    if (br.type === 'boss') { bossDown(); return; }
+    if ((br.type === 'gift' || Math.random() < .12) && drops.length < 4) drops.push({ x: br.x + br.w / 2, y: br.y + br.h / 2, type: randDrop() });
+  } else { score += 5; tone(br.type === 'boss' ? 120 : 160, .05, 'square', .03); }
   hud();
+}
+function explode(br) {                                            // 炸掉上下左右斜角相鄰的磚（含鋼磚），可以連鎖
+  const cx = br.x + br.w / 2, cy = br.y + br.h / 2;
+  for (let i = 0; i < 18; i++) parts.push({ x: cx, y: cy, vx: (Math.random() - .5) * 420, vy: (Math.random() - .5) * 420, s: 4 + Math.random() * 5, rot: Math.random() * 6, vr: 8, life: .7, ink: 'pink' });
+  tone(90, .3, 'sawtooth', .06); score += 30;
+  for (const o of bricks) if (o !== br && o.hp > 0 && o.type !== 'boss' && Math.abs(o.x + o.w / 2 - cx) < BW + GAP + 2 && Math.abs(o.y + o.h / 2 - cy) < BRH + GAP + 2) damage(o, null, true);
+}
+function bossDown() {
+  const b = boss; score += 50 * level;
+  for (let i = 0; i < 40; i++) parts.push({ x: b.x + Math.random() * b.w, y: b.y + Math.random() * b.h, vx: (Math.random() - .5) * 360, vy: -Math.random() * 300, s: 4 + Math.random() * 6, rot: Math.random() * 6, vr: 10, life: 1.2, ink: ['pink', 'blue', 'yellow', 'black'][i % 4] });
+  bricks.forEach(o => { o.hp = 0; }); blobs = []; hud();
 }
 function stepBall(b, dt) {
   const f = slowT > 0 ? .62 : 1;
@@ -305,16 +379,19 @@ function stepBall(b, dt) {
     if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx); tone(300, .03, 'square', .02); }
     else if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx); tone(300, .03, 'square', .02); }
     let br = hitBrick(b);
-    if (br) { b.x = b.vx > 0 ? br.x - b.r : br.x + br.w + b.r; b.vx = -b.vx; damage(br, b); }
+    if (br && pierceT > 0 && br.type !== 'boss') damage(br, b, true);      // 穿透：直接打穿，不反彈
+    else if (br) { b.x = b.vx > 0 ? br.x - b.r : br.x + br.w + b.r; b.vx = -b.vx; damage(br, b); }
     b.y += b.vy * h;
     if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy); tone(300, .03, 'square', .02); }
     br = hitBrick(b);
-    if (br) { b.y = b.vy > 0 ? br.y - b.r : br.y + br.h + b.r; b.vy = -b.vy; damage(br, b); }
+    if (br && pierceT > 0 && br.type !== 'boss') damage(br, b, true);
+    else if (br) { b.y = b.vy > 0 ? br.y - b.r : br.y + br.h + b.r; b.vy = -b.vy; damage(br, b); }
     const hw = paddle.w / 2;
     if (b.vy > 0 && b.y + b.r >= paddle.y && b.y - b.r <= paddle.y + paddle.h && b.x >= paddle.x - hw - b.r && b.x <= paddle.x + hw + b.r) {
       const rel = Math.max(-1, Math.min(1, (b.x - paddle.x) / hw)), a = rel * 1.05;
       b.vx = b.sp * Math.sin(a); b.vy = -b.sp * Math.cos(a); b.y = paddle.y - b.r;
       paddle.squash = 1; chain = 0; tone(440, .05, 'triangle', .05);
+      if (paddle.stickyT > 0) { b.stuck = true; b.caught = true; b.off = b.x - paddle.x; b.vx = b.vy = 0; return; }   // 黏住，點一下再發射
     }
     if (b.y - b.r > H) { b.dead = true; return; }
   }
@@ -324,6 +401,9 @@ function applyDrop(type) {
   if (type === 'wide') paddle.wideT = 12;
   else if (type === 'slow') slowT = 9;
   else if (type === 'life') { lives = Math.min(lives + 1, 6); hud(); }
+  else if (type === 'pierce') pierceT = PIERCE_T;
+  else if (type === 'sticky') paddle.stickyT = STICKY_T;
+  else if (type === 'gun') { gunT = GUN_T; gunCd = 0; }
   else if (type === 'multi') {
     if (balls.some(b => b.stuck)) launch();
     const src = balls.slice(0, 3);
@@ -348,11 +428,12 @@ function update(dt) {
   if (held.has('ArrowRight') || held.has('KeyD')) dir += 1;
   if (dir) { paddle.x += dir * 460 * dt; paddle.target = paddle.x; }
   else paddle.x += (paddle.target - paddle.x) * Math.min(1, dt * 22);
-  paddle.w += ((paddle.wideT > 0 ? 122 : 78) - paddle.w) * Math.min(1, dt * 8);
+  paddle.w += ((paddle.inkT > 0 ? 50 : paddle.wideT > 0 ? 122 : 78) - paddle.w) * Math.min(1, dt * 8);   // 沾到墨會變窄
   paddle.x = Math.max(paddle.w / 2, Math.min(W - paddle.w / 2, paddle.x));
   paddle.wideT = Math.max(0, paddle.wideT - dt);
   paddle.squash = Math.max(0, paddle.squash - dt * 6);
   slowT = Math.max(0, slowT - dt);
+  if (state === 'play') { pierceT = Math.max(0, pierceT - dt); gunT = Math.max(0, gunT - dt); paddle.stickyT = Math.max(0, paddle.stickyT - dt); paddle.inkT = Math.max(0, paddle.inkT - dt); clock += dt; }
 
   if (state === 'play' || state === 'ready') {
     for (const b of balls) {
@@ -361,6 +442,26 @@ function update(dt) {
     }
   }
   if (state === 'play') {
+    for (const br of bricks) if (br.type === 'move') br.x = br.baseX + (Math.sin(clock * 1.6) * .5 + .5) * (BW + GAP);   // 移動磚
+    if (boss && boss.hp > 0) {                                     // Boss 左右移動、滴墨
+      boss.x = W / 2 - boss.w / 2 + Math.sin(clock * (.7 + level * .02)) * (W / 2 - boss.w / 2 - MARGIN);
+      boss.blobT -= dt;
+      if (boss.blobT <= 0) { boss.blobT = Math.max(.9, 2.2 - level * .05); blobs.push({ x: boss.x + boss.w / 2 + (Math.random() - .5) * boss.w * .6, y: boss.y + boss.h, vy: 150 }); }
+    }
+    for (const o of blobs) {
+      o.vy += 160 * dt; o.y += o.vy * dt;
+      if (o.y + 7 >= paddle.y && o.y - 7 <= paddle.y + paddle.h && Math.abs(o.x - paddle.x) < paddle.w / 2 + 6) { o.hit = true; paddle.inkT = INKED_T; showPop('沾到墨了！'); tone(150, .2, 'sawtooth', .05); }
+    }
+    blobs = blobs.filter(o => !o.hit && o.y < H + 20);
+    if (gunT > 0 && (gunCd -= dt) <= 0) {                          // 射擊：板子兩端自動往上射墨滴
+      gunCd = .28; for (const s of [-1, 1]) shots.push({ x: paddle.x + s * (paddle.w / 2 - 6), y: paddle.y - 4 }); tone(980, .03, 'square', .02);
+    }
+    for (const sh of shots) {
+      sh.y -= 560 * dt;
+      const br = bricks.find(o => o.hp > 0 && sh.x > o.x && sh.x < o.x + o.w && sh.y > o.y && sh.y < o.y + o.h);
+      if (br) { sh.hit = true; damage(br, null); }
+    }
+    shots = shots.filter(sh => !sh.hit && sh.y > -10);
     bricks = bricks.filter(br => br.hp > 0);
     balls = balls.filter(b => !b.dead);
     for (const d of drops) {
@@ -368,7 +469,7 @@ function update(dt) {
       if (d.y + 8 >= paddle.y && d.y - 8 <= paddle.y + paddle.h && Math.abs(d.x - paddle.x) < paddle.w / 2 + 12) { d.got = true; applyDrop(d.type); }
     }
     drops = drops.filter(d => !d.got && d.y < H + 20);
-    if (!bricks.length) levelClear();
+    if (!bricks.some(br => br.type !== 'steel')) levelClear();   // 鋼磚不用打完
     else if (!balls.length) loseLife();
   } else if (state === 'clear') {
     clearT -= dt; if (clearT <= 0) nextLevel();
@@ -396,18 +497,31 @@ function drawMarks() {
   ctx.textAlign = 'left'; ctx.fillText('SHEET ' + String(level).padStart(2, '0'), 26, H - 12);
   ctx.textAlign = 'right'; ctx.fillText('PK · Y · BL', W - 26, H - 12);
 }
-// function drawBrick(br) {
-//   const [m, o] = br.hp >= 2 ? ['black', 'pink'] : ROWINK[br.row % 3];
-//   const j = br.flash > 0 ? (Math.random() - .5) * 3 : 0;
-//   ctx.fillStyle = INK[o]; rr(br.x + 2.5 + j, br.y + 2.5, br.w, br.h, 3); ctx.fill();
-//   ctx.fillStyle = INK[m]; rr(br.x, br.y, br.w, br.h, 3); ctx.fill();
-// }
+function drawBoss(b) {                                            // 印刷機：黑色機身、三支油墨滾筒、血條
+  const k = b.flash > 0 ? 40 : 0; ctx.save(); ctx.globalCompositeOperation = 'source-over';   // 不疊色，滾筒顏色才看得到
+  ctx.fillStyle = gray(30 + k); rr(b.x, b.y, b.w, b.h, 6); ctx.fill();
+  ['pink', 'yellow', 'blue'].forEach((ink, i) => {
+    const cx = b.x + 34 + i * 56, cy = b.y + b.h / 2 + 2;
+    ctx.fillStyle = INK[ink]; ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(30,29,31,.45)'; ctx.lineWidth = 2; ctx.beginPath();
+    const a = clock * 6 + i; ctx.moveTo(cx + Math.cos(a) * 12, cy + Math.sin(a) * 12); ctx.lineTo(cx - Math.cos(a) * 12, cy - Math.sin(a) * 12); ctx.stroke();
+  });
+  ctx.restore();
+}
 function drawBrick(br) {
-  const [top, bot] = br.hp >= 2 ? DARK : GRAY, k = br.flash > 0 ? 30 : 0;   // 被打到時亮一下
+  if (br.type === 'boss') return drawBoss(br);
+  if (br.type && SPECIAL[br.type]) {                              // 特殊磚：單色油墨＋字
+    const sp = SPECIAL[br.type]; ctx.fillStyle = SOFT[sp.ink]; rr(br.x, br.y, br.w, br.h, 3); ctx.fill();
+    if (br.type === 'steel') { ctx.strokeStyle = 'rgba(240,239,233,.35)'; ctx.lineWidth = 1; ctx.beginPath(); for (let i = -br.h; i < br.w; i += 6) { ctx.moveTo(br.x + i, br.y + br.h); ctx.lineTo(br.x + i + br.h, br.y); } ctx.save(); ctx.clip(); ctx.stroke(); ctx.restore(); }
+    if (br.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,.35)'; rr(br.x, br.y, br.w, br.h, 3); ctx.fill(); }
+    return;
+  }
+  const c = rowColor(br), hard = br.hp >= 2, lit = br.flash > 0;          // 同一排同色；硬磚用同色系深色；被打到時亮一下
+  const [top, bot] = lit ? [.35, .18] : hard ? [-.22, -.36] : [.14, -.1];
   const g = ctx.createLinearGradient(0, br.y, 0, br.y + br.h);
-  g.addColorStop(0, gray(top + k)); g.addColorStop(1, gray(bot + k));
+  g.addColorStop(0, shade(c, top)); g.addColorStop(1, shade(c, bot));
   ctx.fillStyle = g; rr(br.x, br.y, br.w, br.h, 3); ctx.fill();
-  ctx.strokeStyle = INK.black; ctx.lineWidth = BORDER;
+  ctx.strokeStyle = 'rgba(30,29,31,.55)'; ctx.lineWidth = BORDER;
   rr(br.x + BORDER / 2, br.y + BORDER / 2, br.w - BORDER, br.h - BORDER, 1); ctx.stroke();
 }
 function draw() {
@@ -421,35 +535,51 @@ function draw() {
   for (const br of bricks) drawBrick(br);
   for (const p of parts) {
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.globalAlpha = Math.min(1, p.life * 2);
-    //ctx.fillStyle = INK[p.ink]; ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s); ctx.restore();
     ctx.fillStyle = INK[p.ink] || p.ink; ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s); ctx.restore();
   }
   ctx.globalAlpha = 1;
-  for (const d of drops) {
-    const k = DROPS[d.type];
-    //ctx.fillStyle = INK[k.off]; rr(d.x - 15 + 2, d.y - 8 + 2, 30, 16, 8); ctx.fill();
-    ctx.fillStyle = INK[k.main]; rr(d.x - 15, d.y - 8, 30, 16, 8); ctx.fill();
-  }
+  for (const d of drops) { const k = DROPS[d.type]; ctx.fillStyle = INK[k.main]; rr(d.x - 15, d.y - 8, 30, 16, 8); ctx.fill(); }
+  ctx.fillStyle = INK.pink; for (const sh of shots) { rr(sh.x - 2, sh.y - 7, 4, 10, 2); ctx.fill(); }
+  ctx.fillStyle = INK.black; for (const o of blobs) { ctx.beginPath(); ctx.ellipse(o.x, o.y, 6, 8, 0, 0, Math.PI * 2); ctx.fill(); }
   const pw = paddle.w, ph = paddle.h * (1 - paddle.squash * .3), px = paddle.x - pw / 2, py = paddle.y + (paddle.h - ph);
-  ctx.fillStyle = INK.yellow; rr(px + 3, py + 3, pw, ph, 6); ctx.fill();
-  ctx.fillStyle = INK.blue; rr(px, py, pw, ph, 6); ctx.fill();
+  ctx.fillStyle = paddle.inkT > 0 ? INK.black : paddle.stickyT > 0 ? INK.yellow : INK.blue; rr(px, py, pw, ph, 6); ctx.fill();   // 沾墨黑、黏板黃
+  if (gunT > 0) { ctx.fillStyle = INK.pink; for (const s of [-1, 1]) { rr(paddle.x + s * (pw / 2 - 6) - 3, py - 8, 6, 6, 2); ctx.fill(); } }   // 砲口放在板子上方，不重疊
   for (const b of balls) {
-    // ctx.fillStyle = slowT > 0 ? INK.yellow : INK.blue;
-    // ctx.beginPath(); ctx.arc(b.x + 2, b.y + 2, b.r, 0, Math.PI * 2); ctx.fill();
-    // ctx.fillStyle = INK.pink;
-    ctx.fillStyle = slowT > 0 ? INK.blue : INK.pink;   // 減速中球變藍色
+    ctx.fillStyle = pierceT > 0 ? INK.black : slowT > 0 ? INK.blue : INK.pink;   // 穿透黑、減速藍
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
   }
 
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = INK.paper;
-  for (const br of bricks) if (br.hp >= 2) {
+  ctx.font = '900 11px "Noto Sans TC", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const br of bricks) if (br.type && SPECIAL[br.type]) { ctx.fillStyle = INK[SPECIAL[br.type].text]; ctx.fillText(SPECIAL[br.type].ch, br.x + br.w / 2, br.y + br.h / 2 + .5); }
+  ctx.fillStyle = INK.paper;
+  for (const br of bricks) if (br.hp >= 2 && !br.type) {
     for (let i = 0; i < br.hp; i++) {
       ctx.beginPath(); ctx.arc(br.x + br.w / 2 + (i - (br.hp - 1) / 2) * 7, br.y + br.h / 2, 2, 0, Math.PI * 2); ctx.fill();
     }
   }
   ctx.font = '900 10px "Noto Sans TC", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (const d of drops) { const k = DROPS[d.type]; ctx.fillStyle = INK[k.text]; ctx.fillText(k.ch, d.x, d.y + .5); }
+}
+
+/* ---------- 遊戲中的介面（DOM） ---------- */
+const FX = [['wide', '寬', 'b', () => paddle.wideT, 12], ['slow', '慢', 'y', () => slowT, 9], ['pierce', '穿', 'ky', () => pierceT, PIERCE_T],
+  ['sticky', '黏', 'by', () => paddle.stickyT, STICKY_T], ['gun', '射', 'py', () => gunT, GUN_T], ['ink', '墨', 'k', () => paddle.inkT, INKED_T, true]];
+let fxKey = '';
+function ui() {
+  const playing = state === 'play' || state === 'clear' || state === 'paused';
+  const live = playing ? FX.filter(f => f[3]() > 0) : [], key = live.map(f => f[0]).join();
+  if (key !== fxKey) {                                             // 有道具開始或結束才重畫清單
+    fxKey = key;
+    $('effects').innerHTML = live.map(f => `<div class="fx${f[5] ? ' bad' : ''}" data-k="${f[0]}"><span class="chip ${f[2]}">${f[1]}</span><span class="bar"><i></i></span></div>`).join('');
+  }
+  live.forEach(f => { const el = $('effects').querySelector(`[data-k="${f[0]}"] i`); if (el) el.style.width = Math.min(100, f[3]() / f[4] * 100) + '%'; });
+  const showBoss = playing && boss && boss.hp > 0;
+  $('bossbar').hidden = !showBoss;
+  if (showBoss) { $('bosshp').style.width = boss.hp / boss.max * 100 + '%'; $('bossnum').textContent = `${boss.hp} / ${boss.max}`; }
+  $('combo').hidden = !(state === 'play' && chain >= 3); $('combonum').textContent = chain;
+  $('launch').hidden = !(state === 'play' && balls.some(b => b.stuck));
 }
 
 /* ---------- input ---------- */
@@ -488,10 +618,11 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) pause
 
 /* ---------- loop ---------- */
 makeLevel(1); balls = [newBall()]; hud();
+window.__d = { pal: k => { PALETTE = PALETTES[k]; }, get s() { return { state, level, score, lives, bricks, balls, boss, drops }; }, setLevel: n => { level = n; makeLevel(n); balls = [newBall()]; }, drop: t => applyDrop(t), update: (n, dt = 1 / 60) => { for (let i = 0; i < n; i++) update(dt); }, launch };
 let lastT = performance.now();
 function frame(now) {
   const dt = Math.min(Math.max((now - lastT) / 1000, 0), 1 / 30);
-  lastT = now; update(dt); draw();
+  lastT = now; update(dt); draw(); ui();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
