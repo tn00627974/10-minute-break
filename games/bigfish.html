@@ -44,6 +44,8 @@ body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;ali
 .dash{position:absolute;right:14px;bottom:14px;width:74px;height:74px;border-radius:50%;border:0;background:rgba(10,20,30,.78);color:var(--text);font:900 .9rem var(--display);box-shadow:inset 0 0 0 2px rgba(255,255,255,.3);pointer-events:auto;cursor:pointer;overflow:hidden}
 .dash i{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(255,182,72,.35)}
 .dash.ready{box-shadow:inset 0 0 0 2.5px #ffb648}
+.stick{position:absolute;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
+.stick i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(255,243,224,.5)}
 .overlay{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%) rotate(-1deg);z-index:5;padding:18px 16px 14px;background:var(--kraft);color:var(--marker);box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px;max-height:94%;overflow:auto}
 .overlay h1{margin:0;font-weight:900;font-size:1.45rem;letter-spacing:.06em;color:var(--lantern)}
 .overlay p{margin:0;font-size:.92rem;line-height:1.7}
@@ -72,12 +74,13 @@ body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;ali
     <div class="hurt" id="hurt"></div>
     <div class="buff" id="buff" hidden>🧋 加速 ×1.5 <i><b id="buff-fill"></b></i></div>
     <div class="combo" id="combo" hidden>連吃 ×1.2</div>
+    <div class="stick" id="stick" hidden><i id="knob"></i></div>
     <button class="dash" id="dash" aria-label="衝刺"><i id="dash-cd"></i>衝刺</button>
   </div>
   <section class="overlay" id="overlay">
     <h1 id="ov-title">夜市大魚吃小魚</h1>
     <div id="ov-text">
-      <p>你是撈金魚池裡最小的一條魚。<b>按住畫面</b>，魚就會游過去。</p>
+      <p>你是撈金魚池裡最小的一條魚。手指<b>按住畫面拖曳</b>，就是虛擬搖桿，往哪推就往哪游。</p>
       <ul>
         <li><span class="g">綠圈</span>的魚比你小，碰到就吃掉、慢慢長大</li>
         <li><span class="r">紅圈</span>的魚會吃你，快躲開</li>
@@ -86,7 +89,7 @@ body{height:100%;margin:0;overflow:hidden;display:flex;flex-direction:column;ali
         <li>有 3 條命，危急時按「衝刺」逃走</li>
       </ul>
     </div>
-    <div class="row"><button class="btn" id="ov-btn">下水</button><span class="keys" id="ov-keys">電腦：滑鼠按住拖曳或 WASD／方向鍵，空白鍵衝刺</span></div>
+    <div class="row"><button class="btn" id="ov-btn">下水</button><span class="keys" id="ov-keys">電腦：滑鼠按住，魚會游向游標；或 WASD／方向鍵，空白鍵衝刺</span></div>
   </section>
 </main>
 <script>/**
@@ -505,13 +508,14 @@ function spawnFish(initial = false) {
 function despawnFar() { fishes = fishes.filter(f => { if (Math.abs(f.x - camX) > viewW * 1.6 + 4 || Math.abs(f.y - camY) > viewH * 1.5 + 4) { scene.remove(f.g); return false; } return true; }); }
 
 /* ---------- 每一步（固定 1/60 秒） ---------- */
-let inX = 0, inY = 0, target = null;
+let inX = 0, inY = 0, target = null, stick = null;
 function step(dt) {
   if (state !== 'play') return;
   T += dt; iframe -= dt; dashT -= dt; dashCd -= dt; comboT -= dt; if (comboT <= 0 && combo) { combo = 0; hud(); }
   // 玩家移動：往手指的位置游，或鍵盤方向
   let dx = 0, dy = 0;
   if (auto) [dx, dy] = autoMove();
+  else if (stick) { dx = stick.vx; dy = stick.vy; }
   else if (target) { dx = target.x - me.x; dy = target.y - me.y; const d = Math.hypot(dx, dy); if (d < .25) dx = dy = 0; else { const k = Math.min(1, d / 1.2); dx = dx / d * k; dy = dy / d * k; } }
   else { dx = inX; dy = inY; const d = Math.hypot(dx, dy); if (d > 1) { dx /= d; dy /= d; } }
   const sp = SPEED * (.85 + .25 * Math.min(1.5, me.s)) * (dashT > 0 ? DASH_MUL : 1) * (boostT > 0 ? PEARL_MULT : 1), turn = 5 / (1 + me.s * .6);
@@ -643,9 +647,9 @@ function updatePearls(dt) {
 }
 
 /* ---------- 一局流程 ---------- */
-function begin() { ov.hidden = true; reset(); state = 'play'; if (!tips.move) banner('按住畫面，魚會游過去', 'ok'); tone(440, 880, .2, 'triangle', .05); }
+function begin() { ov.hidden = true; reset(); state = 'play'; if (!tips.move) banner('按住畫面拖曳，往哪推就往哪游', 'ok'); tone(440, 880, .2, 'triangle', .05); }
 function end() {
-  state = 'over'; const rec = score > best; if (rec) { best = score; store.set('bigfish.best', best); $('best').textContent = best; }
+  state = 'over'; stick = ptr = target = null; $('stick').hidden = true; const rec = score > best; if (rec) { best = score; store.set('bigfish.best', best); $('best').textContent = best; }
   try { parent.postMessage({ type: 'arcade:score', game: GAME, score }, '*'); } catch (e) {}
   const like = SPECIES.reduce((a, s) => maxSize >= s.base * .95 ? s : a, null);
   setTimeout(() => {
@@ -736,10 +740,30 @@ const RING_OK = lin('#5ee08a'), RING_BAD = lin('#ff4a3a');
 /* ---------- 輸入 ---------- */
 const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), hit = new THREE.Vector3();
 function worldAt(e) { const r = stage.getBoundingClientRect(); ray.setFromCamera({ x: (e.clientX - r.left) / r.width * 2 - 1, y: -((e.clientY - r.top) / r.height * 2 - 1) }, camera); return ray.ray.intersectPlane(plane, hit) ? { x: hit.x, y: hit.y } : null; }
-let ptr = null;
-stage.addEventListener('pointerdown', e => { if (e.target.closest('button,.overlay') || state !== 'play') return; ptr = { id: e.pointerId, e }; target = worldAt(e); if (!tips.move) { tips.move = 1; store.set('bigfish.tips', tips); } try { stage.setPointerCapture(e.pointerId); } catch (err) {} });
-stage.addEventListener('pointermove', e => { if (ptr && e.pointerId === ptr.id) ptr.e = e; });
-const up = e => { if (ptr && e.pointerId === ptr.id) { ptr = null; target = null; } };
+// 滑鼠：按住後魚游向游標；觸控：按下的位置出現虛擬搖桿，往哪推就往哪游
+let ptr = null; const STICK_R = 55, STICK_DEAD = .15;
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('button,.overlay') || state !== 'play' || ptr || stick) return;
+  if (!tips.move) { tips.move = 1; store.set('bigfish.tips', tips); }
+  if (e.pointerType === 'mouse') { ptr = { id: e.pointerId, e }; target = worldAt(e); }
+  else {
+    const r = stage.getBoundingClientRect(); stick = { id: e.pointerId, x: e.clientX, y: e.clientY, vx: 0, vy: 0 };
+    $('stick').hidden = false; $('stick').style.left = e.clientX - r.left + 'px'; $('stick').style.top = e.clientY - r.top + 'px'; $('knob').style.transform = '';
+  }
+  try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+});
+stage.addEventListener('pointermove', e => {
+  if (ptr && e.pointerId === ptr.id) ptr.e = e;
+  if (!stick || e.pointerId !== stick.id) return;
+  let dx = e.clientX - stick.x, dy = e.clientY - stick.y; const d = Math.hypot(dx, dy); if (d > STICK_R) { dx *= STICK_R / d; dy *= STICK_R / d; }
+  $('knob').style.transform = `translate(${dx}px,${dy}px)`;
+  const m = Math.min(d, STICK_R) / STICK_R;   // 推得越遠游越快，中心一小圈不動
+  if (m < STICK_DEAD) stick.vx = stick.vy = 0; else { const k = (m - STICK_DEAD) / (1 - STICK_DEAD) / (Math.hypot(dx, dy) || 1); stick.vx = dx * k; stick.vy = -dy * k; }   // 畫面往下 = 世界 -y
+});
+const up = e => {
+  if (ptr && e.pointerId === ptr.id) { ptr = null; target = null; }
+  if (stick && e.pointerId === stick.id) { stick = null; $('stick').hidden = true; }
+};
 stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
 function dash() { if (state !== 'play' || dashCd > 0) return; dashT = DASH_T; dashCd = DASH_CD; noise(.2, 2200, .05); }
 $('dash').addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); dash(); });
