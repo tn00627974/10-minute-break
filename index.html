@@ -366,6 +366,7 @@ const GAMES = [
   { id: 'hop', badge: 'up', since: '2026-11-15', title: '粉筆跳格子', cat: '反應', desc: '3D 跳格子，看清左右、跳過石頭、撿糖果和星星。', best: score('hop.best', '格') },
   { id: 'reflex', badge: 'new', since: '2026-11-11', title: '紅綠燈反應王', cat: '反應', desc: '一變綠燈馬上點，五回合比反應，偷跑 0 分。', best: score('reflex.best', '分') },
   { id: 'dance', badge: 'new', since: '2026-11-16', title: '夜市跳舞機', cat: '反應', desc: '3D 跳舞機，箭頭碰到判定線時按對方向，三首原創曲三種難度。', best: score('dance.best', '分') },
+  { id: 'takoyaki', badge: 'new', since: '2026-11-20', title: '夜市章魚燒', cat: '反應', desc: '一盤 12 顆同時烤，倒麵糊、放章魚、金黃時翻面，60 秒衝分數。', best: score('takoyaki.best', '分') },
   { id: 'ringtoss',    title: '夜市套圈圈', cat: '動作', desc: '往下拉再放開丟竹圈，整個套住獎品才算。', best: score('ringtoss.best', '分') },
   { id: 'balloon', badge: 'new', since: '2026-11-11', title: '夜市射氣球', cat: '動作', desc: '點氣球開槍，連擊加倍，金氣球加時間，炸彈別碰。', best: score('balloon.best', '分') },
   { id: 'claw', badge: 'up', since: '2026-11-14', title: '夜市夾娃娃', cat: '動作', desc: '點一下移動、再點一下下爪，對得越準抓得越牢。', best: score('claw.best', '分') },
@@ -376,7 +377,7 @@ const GAMES = [
   { id: 'bricks', badge: 'up', since: '2026-11-15', title: '套色打磚塊', cat: '動作', desc: '打磚塊加特殊磚與印刷機 Boss，七種道具輪流掉。', best: score('riso.best', '分') },
   { id: 'stardust',    title: '星塵防線',   cat: '動作', desc: '拖曳移動、自動開火，撐到母艦出現。', best: score('stardust.best', '分') },
   { id: 'plane',       title: '筆記本紙飛機', cat: '動作', desc: '點一下往上飄，從鉛筆之間的縫鑽過去。', best: score('plane.best', '枝') },
-  { id: 'rooftop',     title: '屋頂貓',     cat: '動作', desc: '黑貓在公寓頂樓間跑酷，空中可以再跳一次。', best: score('roofcat.best', '分') }
+  { id: 'rooftop',     title: '屋頂貓',     cat: '動作', desc: '黑貓在公寓頂樓間跑酷，空中可以再跳一次。', best: score('roofcat.best', '分') },
 ];
 /* 卡片左上角標記：badge 'new' 新遊戲（紅）、'up' 改版（藍）；since 起算 BADGE_DAYS 天後自動消失
    星芒頂點用公式算（外圈、內圈交替），要改尖角數或尖銳度只改 SPIKES / OUTER / INNER */
